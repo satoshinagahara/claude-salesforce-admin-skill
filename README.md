@@ -106,9 +106,8 @@ openssl req -x509 -newkey rsa:2048 \
 > **instance_url** は My Domain URL（`https://xxx.my.salesforce.com`）を使うこと。`login.salesforce.com` では JWT 認証に失敗します。
 
 設定ファイルは以下のいずれかに配置してください（上から優先）：
-1. `~/Desktop/WORK/CLAUDE/COWORK/SALESFORCE/sf-config.json`
-2. `~/sf-config.json`
-3. カレントディレクトリの `sf-config.json`
+1. `~/sf-config.json`（ホームディレクトリ直下）
+2. カレントディレクトリの `sf-config.json`
 
 ### Step 5: 接続テスト
 

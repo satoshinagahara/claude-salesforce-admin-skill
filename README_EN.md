@@ -106,9 +106,8 @@ Generated files:
 > **instance_url** must be your My Domain URL (`https://xxx.my.salesforce.com`). Using `login.salesforce.com` will cause JWT authentication to fail.
 
 Place the config file in one of the following locations (checked in order):
-1. `~/Desktop/WORK/CLAUDE/COWORK/SALESFORCE/sf-config.json`
-2. `~/sf-config.json`
-3. `sf-config.json` in the current directory
+1. `~/sf-config.json` (home directory)
+2. `sf-config.json` in the current directory
 
 ### Step 5: Test the Connection
 
