@@ -180,15 +180,6 @@ salesforce-admin/
 
 ---
 
-## 既知の制約・注意事項
-
-- **Product2 は Master-Detail の親になれない** → Lookup + SetNull で代替
-- **`--metadata` フラグは source-backed コンポーネントに使用不可** → `--source-dir` を使う
-- **カスタムフィールドのデプロイ後は FLS 設定が必要** → 権限セットで付与
-- **Master-Detail 項目は fieldPermissions に含められない** → 除外すること
-
----
-
 ## ライセンス
 
 MIT
