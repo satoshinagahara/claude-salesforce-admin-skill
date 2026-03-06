@@ -30,6 +30,9 @@ You can get a free Developer Edition org at [Salesforce Developer Signup](https:
 | **Permission Sets & Profiles** | FLS settings, object permissions, user assignments |
 | **Apex, Flows & Automation** | Create classes/triggers, enable/disable flows |
 | **Lightning Web Components** | Create and deploy components |
+| **Agentforce** | Create/configure AI agents, topics, actions, prompt templates |
+| **Data360 (Data Cloud)** | Data streams, data model (DMO/DLO), mapping, identity resolution |
+| **Agentforce × Data Cloud** | Grounding data, Data Graph, Semantic Search, RAG |
 
 ---
 
@@ -147,6 +150,10 @@ Import 100 records from a CSV into the Account object.
 Add a new section to the Opportunity page layout and arrange 3 custom fields.
 
 Create a custom object named BOM.
+
+Create an Agentforce Employee Agent with a topic for account summary.
+
+Set up a Data Cloud data stream from the Account object.
 ```
 
 ---
@@ -165,6 +172,10 @@ salesforce-admin/
     ├── metadata-security.md       # Permission sets & profiles
     ├── metadata-automation.md     # Apex, flows & automation
     ├── metadata-lwc.md            # Lightning Web Components
+    ├── metadata-agentforce.md     # Agentforce (GenAI Agent) operations
+    ├── data-streams.md            # Data360: Data streams & Ingestion API
+    ├── data-model.md              # Data360: DMO/DLO, mapping, identity resolution
+    ├── agentforce-integration.md  # Agentforce × Data Cloud integration
     └── safety-production.md       # Production safety protocol
 ```
 

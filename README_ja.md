@@ -30,6 +30,9 @@ Developer Edition org は [Salesforce 開発者登録](https://developer.salesfo
 | **権限セット・プロファイル** | FLS設定・オブジェクト権限・ユーザー割り当て |
 | **Apex・フロー・自動化** | クラス作成・トリガー・フロー有効化/無効化 |
 | **Lightning Web Component** | コンポーネント作成・デプロイ |
+| **Agentforce** | AIエージェントの作成・設定、トピック・アクション・プロンプトテンプレート |
+| **Data360（Data Cloud）** | データストリーム・データモデル（DMO/DLO）・マッピング・統合ルール |
+| **Agentforce × Data Cloud連携** | グラウンディングデータ・Data Graph・Semantic Search・RAG |
 
 ---
 
@@ -147,6 +150,10 @@ Account オブジェクトに「担当部署」というテキスト項目を追
 商談ページに新しいセクションを追加して、カスタム項目3つを配置してください
 
 BOMという名前のカスタムオブジェクトを作成してください
+
+Agentforceの取引先サマリー用Employee Agentを作成してください
+
+AccountオブジェクトのData Cloudデータストリームを設定してください
 ```
 
 ---
@@ -165,6 +172,10 @@ salesforce-admin/
     ├── metadata-security.md       # 権限セット・プロファイル
     ├── metadata-automation.md     # Apex・フロー・自動化
     ├── metadata-lwc.md            # Lightning Web Component
+    ├── metadata-agentforce.md     # Agentforce（GenAI Agent）操作
+    ├── data-streams.md            # Data360: データストリーム・Ingestion API
+    ├── data-model.md              # Data360: DMO/DLO・マッピング・統合ルール
+    ├── agentforce-integration.md  # Agentforce × Data Cloud 連携
     └── safety-production.md       # 本番環境安全確認プロトコル
 ```
 
