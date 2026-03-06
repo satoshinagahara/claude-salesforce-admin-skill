@@ -1,62 +1,62 @@
 # Claude Code — Salesforce Admin Skill
 
-A Salesforce administration skill for Claude Code. Using Salesforce CLI (`sf`), you can perform data operations, metadata operations, LWC creation, and more simply by giving natural language instructions.
+Claude Code 用の Salesforce 管理スキルです。Salesforce CLI (`sf`) を使って、データ操作・メタデータ操作・LWC作成などを自然言語で指示するだけで実行できます。
 
 ---
 
-## ⚠️ Recommended Environments (Important)
+## ⚠️ 利用環境について（重要）
 
-> **This skill is recommended for use in Developer Edition or Sandbox environments.**
+> **このスキルは Developer Edition または Sandbox 環境での利用を推奨します。**
 
-This skill performs direct operations on your Salesforce org via the Salesforce CLI. **Using it in a Production environment requires a thorough understanding and careful operation.**
+本スキルは Salesforce CLI を通じて org に直接操作を行います。**本番環境（Production）での使用は十分な理解と慎重な運用が必要です。**
 
-| Environment | Recommendation | Notes |
+| 環境 | 推奨度 | 備考 |
 |---|---|---|
-| **Developer Edition** | ✅ Recommended | Free to obtain. No impact on production data. |
-| **Sandbox** | ✅ Recommended | A test environment that mirrors production settings. |
-| **Production** | ⚠️ Advanced users only | Mistakes have direct business impact. Auto safety checks apply, but proceed with caution. |
+| **Developer Edition** | ✅ 推奨 | 無料で取得可能。本番データへの影響なし |
+| **Sandbox** | ✅ 推奨 | 本番の設定を引き継いだテスト環境 |
+| **本番 (Production)** | ⚠️ 上級者向け | 誤操作がビジネスに直結。自動安全確認が適用されるが要注意 |
 
-You can get a free Developer Edition org at [Salesforce Developer Signup](https://developer.salesforce.com/signup).
+Developer Edition org は [Salesforce 開発者登録](https://developer.salesforce.com/signup) から無料で取得できます。
 
 ---
 
-## Key Features
+## 主な機能
 
-| Category | Capabilities |
+| 操作カテゴリ | できること |
 |---|---|
-| **Data Operations (DML)** | Create, update, delete records (single / bulk CSV) |
-| **Custom Objects & Fields** | Create, modify, delete, configure relationships |
-| **Page Layouts & Record Types** | Modify layouts, add sections, arrange fields |
-| **Permission Sets & Profiles** | FLS settings, object permissions, user assignments |
-| **Apex, Flows & Automation** | Create classes/triggers, enable/disable flows |
-| **Lightning Web Components** | Create and deploy components |
-| **Agentforce** | Create/configure AI agents, topics, actions, prompt templates |
-| **Data360 (Data Cloud)** | Data streams, data model (DMO/DLO), mapping, identity resolution |
-| **Agentforce × Data Cloud** | Grounding data, Data Graph, Semantic Search, RAG |
+| **データ操作 (DML)** | レコードの登録・更新・削除（単件／バルクCSV）|
+| **カスタムオブジェクト・フィールド** | 作成・変更・削除・リレーション設定 |
+| **ページレイアウト・レコードタイプ** | レイアウト変更・セクション追加・フィールド配置 |
+| **権限セット・プロファイル** | FLS設定・オブジェクト権限・ユーザー割り当て |
+| **Apex・フロー・自動化** | クラス作成・トリガー・フロー有効化/無効化 |
+| **Lightning Web Component** | コンポーネント作成・デプロイ |
+| **Agentforce** | AIエージェントの作成・設定、トピック・アクション・プロンプトテンプレート |
+| **Data360（Data Cloud）** | データストリーム・データモデル（DMO/DLO）・マッピング・統合ルール |
+| **Agentforce × Data Cloud連携** | グラウンディングデータ・Data Graph・Semantic Search・RAG |
 
 ---
 
-## Prerequisites
+## 前提条件
 
-1. [Salesforce CLI](https://developer.salesforce.com/tools/salesforcecli) (`sf`) must be installed.
-2. A **Connected App** must be created in your Salesforce org.
-3. A configuration file (`sf-config.json`) for JWT authentication must be prepared.
+1. [Salesforce CLI](https://developer.salesforce.com/tools/salesforcecli) (`sf`) がインストール済みであること
+2. Salesforce org に **接続アプリケーション（Connected App）** が作成済みであること
+3. JWT認証用の設定ファイル (`sf-config.json`) が準備済みであること
 
 ---
 
-## Salesforce Setup
+## Salesforce 側のセットアップ
 
-This skill connects to Salesforce using **JWT Bearer Flow**. The following setup is required only once.
+このスキルは **JWT Bearer Flow** を使って Salesforce に接続します。以下の手順で一度だけセットアップが必要です。
 
-### Step 1: Generate an RSA Key Pair
+### Step 1: RSA 鍵ペアの生成
 
-Run the following in your terminal:
+ターミナルで以下を実行します：
 
 ```bash
-# Create a working directory
+# 作業ディレクトリを作成
 mkdir -p ~/sf-jwt-keys && cd ~/sf-jwt-keys
 
-# Generate a private key and self-signed certificate (valid for 365 days)
+# 秘密鍵と自己署名証明書を生成（有効期間365日）
 openssl req -x509 -newkey rsa:2048 \
   -keyout server.key \
   -out server.crt \
@@ -64,55 +64,55 @@ openssl req -x509 -newkey rsa:2048 \
   -subj "/CN=salesforce-jwt"
 ```
 
-Generated files:
-- `server.key` — Private key (**never share this publicly**)
-- `server.crt` — Certificate (to be uploaded to Salesforce)
+生成されるファイル：
+- `server.key` — 秘密鍵（**絶対に公開しないこと**）
+- `server.crt` — 証明書（Salesforceにアップロードする）
 
-### Step 2: Create a Connected App in Salesforce
+### Step 2: Salesforce に接続アプリケーションを作成
 
-1. Open **Setup** in Salesforce.
-2. Search for **App Manager** in the Quick Find box.
-3. Click **New Connected App**.
-4. Fill in the following:
+1. Salesforce の **設定（Setup）** を開く
+2. 検索バーで「**アプリケーションマネージャ**」を検索
+3. 「**新規接続アプリケーション**」をクリック
+4. 以下を入力：
 
-| Field | Value |
+| 項目 | 値 |
 |---|---|
-| Connected App Name | `Claude Code JWT` (or any name) |
-| API Name | `Claude_Code_JWT` |
-| Contact Email | Your email address |
-| Enable OAuth Settings | ✅ Check |
-| Callback URL | `http://localhost:1717/OauthRedirect` |
-| OAuth Scopes | Add `Full access (full)` |
-| Use Digital Signatures | ✅ Check → Upload `server.crt` |
+| 接続アプリケーション名 | `Claude Code JWT` （任意）|
+| API 参照名 | `Claude_Code_JWT` |
+| 取引先責任者メール | 自分のメールアドレス |
+| OAuth 設定の有効化 | ✅ チェック |
+| コールバック URL | `http://localhost:1717/OauthRedirect` |
+| OAuth 範囲 | `完全なアクセス (full)` を追加 |
+| デジタル署名を使用 | ✅ チェック → `server.crt` をアップロード |
 
-5. After saving, note the **Consumer Key**.
+5. 保存後、「**コンシューマ鍵（Consumer Key）**」をメモする
 
-### Step 3: Configure Connected App Policies
+### Step 3: 接続アプリケーションのポリシー設定
 
-1. Open the app you created and click **Manage Policies**.
-2. Under **OAuth Policies**, set "Permitted Users" to `Admin approved users are pre-authorized`.
-3. In the **Profiles** tab, add the profiles allowed to connect (e.g., `System Administrator`).
+1. 作成したアプリを開き「**ポリシーを管理**」をクリック
+2. **OAuth ポリシー** → 「許可されているユーザー」を `管理者が承認したユーザーは事前承認済み` に変更
+3. **プロファイル** タブで、接続を許可するプロファイル（例: `システム管理者`）を追加
 
-> ⚠️ Without this policy setting, JWT authentication will result in an `INVALID_LOGIN` error.
+> ⚠️ このポリシー設定をしないと JWT 認証で `INVALID_LOGIN` エラーが発生します。
 
-### Step 4: Create sf-config.json
+### Step 4: sf-config.json を作成
 
 ```json
 {
-  "consumer_key": "paste your consumer key here",
+  "consumer_key": "ここにコンシューマ鍵を貼り付け",
   "key_file_path": "/Users/yourname/sf-jwt-keys/server.key",
   "username": "your-username@example.com",
   "instance_url": "https://your-domain.my.salesforce.com"
 }
 ```
 
-> **instance_url** must be your My Domain URL (`https://xxx.my.salesforce.com`). Using `login.salesforce.com` will cause JWT authentication to fail.
+> **instance_url** は My Domain URL（`https://xxx.my.salesforce.com`）を使うこと。`login.salesforce.com` では JWT 認証に失敗します。
 
-Place the config file in one of the following locations (checked in order):
-1. `~/sf-config.json` (home directory)
-2. `sf-config.json` in the current directory
+設定ファイルは以下のいずれかに配置してください（上から優先）：
+1. `~/sf-config.json`（ホームディレクトリ直下）
+2. カレントディレクトリの `sf-config.json`
 
-### Step 5: Test the Connection
+### Step 5: 接続テスト
 
 ```bash
 sf org login jwt \
@@ -121,15 +121,15 @@ sf org login jwt \
   --username your-username@example.com \
   --instance-url https://your-domain.my.salesforce.com
 
-# On success, org info will be displayed
+# 成功すると org 情報が表示される
 sf org display --target-org your-username@example.com
 ```
 
 ---
 
-## Installation
+## インストール方法
 
-Clone this repository into Claude Code's skills directory.
+Claude Code のスキルディレクトリにこのリポジトリをクローンします。
 
 ```bash
 git clone https://github.com/satoshinagahara/claude-salesforce-admin-skill \
@@ -138,81 +138,80 @@ git clone https://github.com/satoshinagahara/claude-salesforce-admin-skill \
 
 ---
 
-## Usage
+## 使い方
 
-Type `/salesforce-admin` in Claude Code, or give natural language instructions like:
+Claude Code 上で `/salesforce-admin` とタイプするか、以下のように自然言語で指示します：
 
 ```
-Add a text field called "Department" to the Account object.
+Account オブジェクトに「担当部署」というテキスト項目を追加してください
 
-Import 100 records from a CSV into the Account object.
+取引先レコードをCSVから100件インポートしてください
 
-Add a new section to the Opportunity page layout and arrange 3 custom fields.
+商談ページに新しいセクションを追加して、カスタム項目3つを配置してください
 
-Create a custom object named BOM.
+BOMという名前のカスタムオブジェクトを作成してください
 
-Create an Agentforce Employee Agent with a topic for account summary.
+Agentforceの取引先サマリー用Employee Agentを作成してください
 
-Set up a Data Cloud data stream from the Account object.
+AccountオブジェクトのData Cloudデータストリームを設定してください
 ```
 
 ---
 
-## File Structure
+## ファイル構成
 
 ```
 salesforce-admin/
-├── SKILL.md                       # Skill definition (loaded by Claude Code)
-├── README.md                      # This file (English README)
-├── README_ja.md                   # Japanese README
+├── SKILL.md                       # スキル定義（Claude Code が読み込む）
+├── README.md                      # このファイル（日本語 README）
+├── README_en.md                   # English README
 └── references/
-    ├── data-dml.md                # Data operation reference
-    ├── metadata-objects.md        # Object & field operations
-    ├── metadata-ui.md             # Page layouts & record types
-    ├── metadata-security.md       # Permission sets & profiles
-    ├── metadata-automation.md     # Apex, flows & automation
-    ├── metadata-lwc.md            # Lightning Web Components
-    ├── metadata-agentforce.md     # Agentforce (GenAI Agent) operations
-    ├── data-streams.md            # Data360: Data streams & Ingestion API
-    ├── data-model.md              # Data360: DMO/DLO, mapping, identity resolution
-    ├── agentforce-integration.md  # Agentforce × Data Cloud integration
-    └── safety-production.md       # Production safety protocol
+    ├── data-dml.md                # データ操作リファレンス
+    ├── metadata-objects.md        # オブジェクト・フィールド操作
+    ├── metadata-ui.md             # ページレイアウト・レコードタイプ
+    ├── metadata-security.md       # 権限セット・プロファイル
+    ├── metadata-automation.md     # Apex・フロー・自動化
+    ├── metadata-lwc.md            # Lightning Web Component
+    ├── metadata-agentforce.md     # Agentforce（GenAI Agent）操作
+    ├── data-streams.md            # Data360: データストリーム・Ingestion API
+    ├── data-model.md              # Data360: DMO/DLO・マッピング・統合ルール
+    ├── agentforce-integration.md  # Agentforce × Data Cloud 連携
+    └── safety-production.md       # 本番環境安全確認プロトコル
 ```
 
 ---
 
-## Production Safety Features
+## 本番環境での安全機能
 
-When operating on a production org, the protocol in `safety-production.md` is automatically applied:
+本番 org への操作時は `safety-production.md` のプロトコルが自動的に適用されます：
 
-- **Validate** is run before any metadata changes and results are presented to the user.
-- **Backups** are taken before destructive operations (deletions, bulk updates).
-- **Impact scope is presented to the user** before execution, with explicit confirmation required.
-
----
-
-## Known Limitations
-
-- **Product2 cannot be a Master-Detail parent** → Use Lookup + SetNull instead.
-- **`--metadata` flag cannot be used with source-backed components** → Use `--source-dir`.
-- **FLS must be configured after deploying custom fields** → Grant via permission sets.
-- **Master-Detail fields cannot be included in fieldPermissions** → Exclude them.
+- メタデータ変更前に **Validate** を実行してユーザーに提示
+- 破壊的操作（削除・バルク更新）前に **バックアップ** を取得
+- 操作前に **影響範囲をユーザーに提示**、明示的な承認後に実行
 
 ---
 
-## Disclaimer
+## 既知の制約・注意事項
 
-This skill performs direct operations on your Salesforce org via the Salesforce CLI. By using this skill, you agree to the following:
+- **`--metadata` フラグは source-backed コンポーネントに使用不可** → `--source-dir` を使う
+- **カスタムフィールドのデプロイ後は FLS 設定が必要** → 権限セットで付与
+- **Master-Detail 項目は fieldPermissions に含められない** → 除外すること
 
-- The author assumes **no responsibility** for any data loss, corruption, unintended modifications, or any other damages resulting from the use of this skill.
-- As this skill involves automated operations by AI (Claude), unintended actions may be executed. Use in a **Production environment is entirely at your own risk** and should only be done with a thorough understanding of the implications.
-- This skill is provided **as-is**, with no warranties of any kind regarding accuracy, completeness, or fitness for a particular purpose.
-- The skill may stop working without notice due to Salesforce specification changes or API updates.
+---
+
+## 免責事項
+
+本スキルは Salesforce CLI を通じて Salesforce org に直接操作を行います。ご利用にあたっては以下の点をご了承ください。
+
+- 本スキルの使用によって生じたデータの損失・破損・意図しない変更、およびその他いかなる損害についても、作者は一切の責任を負いません。
+- AI（Claude）による自動操作を含むため、意図しない操作が実行される可能性があります。特に本番環境（Production）での使用は十分に理解したうえで自己責任にて行ってください。
+- 本スキルは現状有姿（as-is）で提供されており、動作の正確性・完全性・特定目的への適合性について、いかなる保証も行いません。
+- Salesforce の仕様変更・API の変更等により、予告なく動作しなくなる場合があります。
 
 **Use at your own risk.**
 
 ---
 
-## License
+## ライセンス
 
 MIT
