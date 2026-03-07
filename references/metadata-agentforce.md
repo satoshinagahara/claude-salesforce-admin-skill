@@ -367,6 +367,125 @@ Agentのシステムユーザーが Apex クラスにアクセスできないた
 - `pluginInstructions` → `genAiPluginInstructions` を使う
 - `functions` → `genAiFunctions` を使う
 
+### 7-1. トピック記述のベストプラクティス
+
+トピックの各フィールドはLLMがトピック選択・アクション実行の判断に使う。曖昧な記述はトピック誤選択や期待外れの回答の原因になる。
+
+#### Classification Description（`<description>`）— いつこのトピックを使うか
+
+LLMが「このユーザーの質問はどのトピックに該当するか」を判断するための説明。
+
+**書き方のポイント：**
+- このトピックが**どのような質問・リクエストに対応するか**を明確に書く
+- 他のトピックと区別できる具体性を持たせる
+- 1〜3文で簡潔に
+
+**良い例：**
+```
+Handles customer inquiries about order status, order modifications,
+and return/refund requests for existing orders.
+```
+
+**悪い例：**
+```
+Manages orders.
+```
+→ 曖昧すぎてLLMが他のトピック（例: 新規注文作成）と区別できない
+
+#### Scope（`<scope>`）— このトピックで何ができて何ができないか
+
+エージェントの行動範囲を定義する。**できること（In Scope）** と **できないこと（Out of Scope）** の両方を明記する。
+
+**書き方のポイント：**
+- 「できること」と「できないこと」を箇条書きで明確に分ける
+- 境界ケースを具体的に記述する（エージェントが迷う場面を減らす）
+- エスカレーション条件を含める
+
+**良い例：**
+```
+The agent can:
+- Look up order status by order number or customer email
+- Modify shipping address for orders not yet shipped
+- Initiate return requests for orders delivered within the last 30 days
+- Provide estimated delivery dates
+
+The agent cannot:
+- Cancel orders that have already been shipped
+- Process refunds (escalate to human agent)
+- Create new orders
+- Access payment or credit card information
+
+If the customer's request falls outside these boundaries,
+escalate to a human agent.
+```
+
+**悪い例：**
+```
+Handle order inquiries.
+```
+→ 何ができて何ができないかが不明。エージェントが想定外の操作を試みるリスクがある
+
+#### Instructions（`<genAiPluginInstructions>`）— どのように処理するか
+
+エージェントが会話をどう進め、アクションをどう使うかの具体的な指示。
+
+**書き方のポイント：**
+- アクション名は **API名** で記述する（例: `Get_Order_Status` 。表示名ではなくAPI名を使うことでLLMが正確に識別できる）
+- アクションの実行順序や前提条件がある場合は明示する
+- `must` / `always` / `never` は慎重に使う（LLMが文字通りに従おうとして「スタック」するリスクがある）
+- 否定形（`don't`）より肯定形（`always do X`）の方がLLMに明確
+- 複数の指示は1つのinstructionボックスにまとめた方が効果的
+- 長すぎる指示は応答速度を低下させる。簡潔に保つ
+- 複雑な非決定論的ロジックはPrompt Templateアクションに移す
+
+**良い例：**
+```
+1. First, identify the customer using the Get_Customer_Details action
+   with their email address or order number.
+2. Once the customer is identified, use the Get_Order_Status action
+   to retrieve order information.
+3. If the customer wants to modify their order, check the order status
+   first. Only use the Modify_Order action if the status is "Processing".
+4. For return requests, verify the delivery date is within 30 days
+   before using the Create_Return_Request action.
+5. Respond in the same language the customer uses.
+6. If you cannot resolve the issue, offer to transfer to a human agent.
+```
+
+**悪い例：**
+```
+Help the customer with their order.
+```
+→ アクションの使い方、順序、条件が全く不明
+
+#### User Input Examples — ユーザーの発話例（UI設定）
+
+Agent Builder UIで設定する、ユーザーの典型的な発話パターン。LLMのトピック分類精度を向上させる。
+
+**書き方のポイント：**
+- 典型的な質問を5〜10個記述する
+- バリエーションを持たせる（丁寧な言い方、カジュアルな言い方、キーワードだけ等）
+- Out-of-scope の例も含めて境界を明確にする
+
+**良い例：**
+```
+- 注文番号12345の配送状況を教えてください
+- My order hasn't arrived yet, can you check?
+- 配送先住所を変更したいです
+- 返品したいのですが
+- Where is my order?
+- 注文をキャンセルできますか？（→ Out of scope として処理）
+```
+
+#### トピック設計の全体原則
+
+1. **1トピック = 1目的**: 複数の目的を1つのトピックに詰め込まない
+2. **最小限から始める**: 少ないトピック・少ない指示で開始し、テスト結果を見て追加
+3. **既定トピック活用**: Salesforceが提供する事前構成済みトピックをベースにカスタマイズ
+4. **アクション固有の指示はアクション側に**: トピックのInstructionsが複雑になったらアクションのInput/Output Instructionsに分散
+5. **会話をスクリプト化しすぎない**: エージェントの自然な対話能力を活かす
+6. **テスト駆動**: Agent Builderの Preview や `sf agent test run` で繰り返しテスト
+
 ---
 
 ## 8. GenAiPlannerBundle の構造
