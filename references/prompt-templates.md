@@ -239,6 +239,8 @@ sf api request rest \
 
 ### 6-3. 典型パターン: Apex データ取得 → Prompt Template 生成
 
+**⚠️ 2アクション分離パターンには重大な制限あり。セクション 6-5 を必ず確認すること。**
+
 ```
 [トピック: 取引先分析]
   アクション1: 取引先総合分析（GenAiFunction → Apex）
@@ -251,8 +253,6 @@ sf api request rest \
      その結果をアクション2のanalysisDataに渡して分析レポートを生成」
 ```
 
-**Prompt Template（Flex）の入力にFree Textを使用し、Apexの出力（JSON文字列）をそのまま渡す設計が実証済み。**
-
 ### 6-4. 設計時の注意点
 
 | 観点 | ガイドライン |
@@ -261,6 +261,87 @@ sf api request rest \
 | **実行順序** | Topic Instructionsで明示的に記述（「まずAを実行し、結果をBに渡す」） |
 | **データ受け渡し** | Apex出力 → Prompt Template入力の対応を Instructions で明記 |
 | **プロンプト設計** | データに依存する指示（通貨形式等）は実データに合わせる。存在しないデータについて言及させない |
+
+### 6-5. Agentforce アクション間データ受け渡しの制限と推奨パターン（重要・実証済み）
+
+#### 問題: primitive://String 入力の maxLength 255 制限
+
+Prompt Template の入力定義 `primitive://String` は、Agentforce のアクション間受け渡し時に **maxLength: 255 文字**にデフォルト制限される。この制限はプラットフォーム内部で適用され、GenAiPlannerBundle の schema.json を変更しても反映されない（InternalCopilot の Metadata API デプロイは無言で無視される）。
+
+**影響:**
+- Apex アクションの出力（JSON）が数KB〜数十KBの場合、次のアクション（Prompt Template）に渡せない
+- Agent LLM が function call で大量のネストされた JSON を引数に渡す際、エスケープが壊れる
+- エラー例: `Invalid argument syntax. Argument list should be a valid JSON`
+
+**結果: 2アクション分離パターン（Apex → Prompt Template）は、データ量が少ない場合のみ有効。数KB以上のデータ受け渡しには使えない。**
+
+#### 推奨パターン: Apex 内で ConnectApi 経由で Prompt Template を呼び出す（1アクション統合）
+
+```
+NG: Agent → Apex(データ取得) → [大量JSON] → Prompt Template  ← maxLength 255で壊れる
+OK: Agent → Apex(データ取得 + ConnectApi で Prompt Template 呼び出し) → レポートテキスト
+```
+
+Apex 内で `ConnectApi.EinsteinLLM.generateMessagesForPromptTemplate()` を使い、Prompt Template を直接呼び出す。大量 JSON の受け渡しは Apex 内部で完結し、Agent には最終的なレポートテキストのみ返す。
+
+**実装例:**
+
+```apex
+private static String generateReport(String jsonData) {
+    try {
+        ConnectApi.EinsteinPromptTemplateGenerationsInput input =
+            new ConnectApi.EinsteinPromptTemplateGenerationsInput();
+        input.isPreview = false;
+        input.additionalConfig = new ConnectApi.EinsteinLlmAdditionalConfigInput();
+        input.additionalConfig.numGenerations = 1;
+        input.additionalConfig.temperature = 0;
+
+        Map<String, ConnectApi.WrappedValue> inputParams =
+            new Map<String, ConnectApi.WrappedValue>();
+        // primitive://String 入力には WrappedValue のプロパティを直接設定
+        ConnectApi.WrappedValue wv = new ConnectApi.WrappedValue();
+        wv.value = jsonData;
+        inputParams.put('Input:analysisData', wv);
+        input.inputParams = inputParams;
+
+        ConnectApi.EinsteinPromptTemplateGenerationsRepresentation result =
+            ConnectApi.EinsteinLLM.generateMessagesForPromptTemplate(
+                'MyPromptTemplateName', input);  // テンプレート API 名
+
+        return result.generations[0].text;
+    } catch (Exception e) {
+        // フォールバック: エラー時は生JSONを返す
+        return 'レポート生成中にエラーが発生しました: ' + e.getMessage() +
+               '\n\n--- 生データ ---\n' + jsonData;
+    }
+}
+```
+
+**ConnectApi.WrappedValue の注意点:**
+- `toWrappedValue(SObject)` は SObject 専用。**String には使えない**（`Method does not exist` エラー）
+- primitive://String 入力には `new ConnectApi.WrappedValue()` でインスタンスを作り、`.value` プロパティに String を直接セットする
+
+**このパターンのメリット:**
+- トピック内のアクションが1つに集約され、Agent LLM の推論が単純化
+- 大量データの受け渡しが Apex 内部で完結し、maxLength 制限を回避
+- エラー時のフォールバック（生JSON返却）も Apex 内で制御可能
+
+**このパターンの設計:**
+```
+@InvocableMethod
+public static List<Result> analyze(List<Request> requests) {
+    // 1. データ取得（SOQL等）
+    String jsonData = buildAnalysisData(req.inputId);
+
+    // 2. Prompt Template 呼び出し（ConnectApi）
+    String report = generateReport(jsonData);
+
+    // 3. レポートテキストを返す
+    res.analysisReport = report;
+}
+```
+
+Prompt Template 自体は引き続き Prompt Builder で管理・テスト・バージョン管理でき、Apex はデータ取得と呼び出しの橋渡し役に徹する。
 
 ---
 

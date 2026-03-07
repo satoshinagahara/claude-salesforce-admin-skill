@@ -1,12 +1,10 @@
 ---
 name: salesforce-admin
 description: "Claude Code専用のSalesforce管理スキル。データの登録・更新（単件/バルク）、カスタムオブジェクト・フィールド・レイアウト・権限セット・Apex・フロー・Agentforce・Data360（Data Cloud）などの操作をCLIで実行。本番環境対応。"
+argument-hint: "[操作内容]"
 ---
 
 # salesforce-admin Skill
-
-## Description
-Claude Code専用のSalesforce管理スキル。データの登録・更新（単件/バルク）、カスタムオブジェクト・フィールド・レイアウト・権限セット・Apex・フロー・Agentforce・Data360（Data Cloud）などの操作をCLIで実行。本番環境対応。
 
 ## スキルのフィードバックルール
 
@@ -64,17 +62,17 @@ sf org login jwt \
 
 | 操作タイプ | referenceファイル | 判定キーワード |
 |---|---|---|
-| データ登録・更新・削除 | `references/data-dml.md` | 登録、作成、更新、削除、インポート、CSV、レコード |
-| カスタムオブジェクト・フィールド | `references/metadata-objects.md` | カスタムオブジェクト、項目追加、フィールド、必須、参照関係 |
-| ページレイアウト・レコードタイプ | `references/metadata-ui.md` | ページレイアウト、レコードタイプ、レイアウト変更 |
-| 権限セット・プロファイル | `references/metadata-security.md` | 権限セット、プロファイル、アクセス権、ユーザー権限 |
-| Apex・フロー・自動化 | `references/metadata-automation.md` | Apex、フロー、トリガー、ワークフロー、プロセスビルダー |
-| Lightning Web Component | `references/metadata-lwc.md` | LWC、Lightning Web Component、コンポーネント作成、lwc、UI部品 |
-| Agentforce / GenAI Agent | `references/metadata-agentforce.md` | Agentforce、Agent、エージェント、GenAiPlugin、GenAiFunction、GenAiPlanner、Bot、BotVersion、AIエージェント、agentSpec |
-| Data360 データストリーム・取り込み | `references/data-streams.md` | データストリーム、Ingestion、取り込み、コネクタ、データソース、Data Cloud、Data360、CDP |
-| Data360 データモデル・マッピング・統合 | `references/data-model.md` | データモデル、DMO、DLO、Data Lake Object、マッピング、統合ルール、Identity Resolution、名寄せ |
-| Prompt Template / Prompt Builder | `references/prompt-templates.md` | プロンプトテンプレート、Prompt Template、Prompt Builder、LLM生成、Field Generation、Flex Template、Sales Email、Einstein生成AI |
-| Agentforce × Data Cloud連携・RAG | `references/agentforce-integration.md` | グラウンディング、Data Graph、Semantic Search、ベクトル検索、RAG、Retriever、Search Index、Data Library、チャンキング、ナレッジ検索 |
+| データ登録・更新・削除 | [data-dml.md](references/data-dml.md) | 登録、作成、更新、削除、インポート、CSV、レコード |
+| カスタムオブジェクト・フィールド | [metadata-objects.md](references/metadata-objects.md) | カスタムオブジェクト、項目追加、フィールド、必須、参照関係 |
+| ページレイアウト・レコードタイプ | [metadata-ui.md](references/metadata-ui.md) | ページレイアウト、レコードタイプ、レイアウト変更 |
+| 権限セット・プロファイル | [metadata-security.md](references/metadata-security.md) | 権限セット、プロファイル、アクセス権、ユーザー権限 |
+| Apex・フロー・自動化 | [metadata-automation.md](references/metadata-automation.md) | Apex、フロー、トリガー、ワークフロー、プロセスビルダー |
+| Lightning Web Component | [metadata-lwc.md](references/metadata-lwc.md) | LWC、Lightning Web Component、コンポーネント作成、lwc、UI部品 |
+| Agentforce / GenAI Agent | [metadata-agentforce.md](references/metadata-agentforce.md) | Agentforce、Agent、エージェント、GenAiPlugin、GenAiFunction、GenAiPlanner、Bot、BotVersion、AIエージェント、agentSpec |
+| Data360 データストリーム・取り込み | [data-streams.md](references/data-streams.md) | データストリーム、Ingestion、取り込み、コネクタ、データソース、Data Cloud、Data360、CDP |
+| Data360 データモデル・マッピング・統合 | [data-model.md](references/data-model.md) | データモデル、DMO、DLO、Data Lake Object、マッピング、統合ルール、Identity Resolution、名寄せ |
+| Prompt Template / Prompt Builder | [prompt-templates.md](references/prompt-templates.md) | プロンプトテンプレート、Prompt Template、Prompt Builder、LLM生成、Field Generation、Flex Template、Sales Email、Einstein生成AI |
+| Agentforce × Data Cloud連携・RAG | [agentforce-integration.md](references/agentforce-integration.md) | グラウンディング、Data Graph、Semantic Search、ベクトル検索、RAG、Retriever、Search Index、Data Library、チャンキング、ナレッジ検索 |
 
 複数タイプにまたがる場合は複数ファイルを読み込む。
 
