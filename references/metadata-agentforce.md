@@ -22,7 +22,9 @@ APIバージョン60以上が必要。GenAiPlannerBundleはv64以上、AiAuthori
 |---|---|---|
 | null | `Bot` | 従来型Einstein Bot |
 | `EinsteinServiceAgent` | `ExternalCopilot` | Agentforce Service Agent（顧客向け） |
-| `EinsteinCopilot`（UI自動設定） | `InternalCopilot` | Employee Agent（社内向け） |
+| `AgentforceEmployeeAgent`（UI自動設定） | `InternalCopilot` | Employee Agent（社内向け） |
+
+> **注意**: AgentType値は以前 `EinsteinCopilot` だったが `AgentforceEmployeeAgent` に変更された（2026-03確認）。
 
 ### 0-3. 種別ごとの利用シーン比較
 
@@ -36,11 +38,14 @@ APIバージョン60以上が必要。GenAiPlannerBundleはv64以上、AiAuthori
 
 | 操作 | ExternalCopilot | InternalCopilot |
 |---|---|---|
-| `sf agent create` で作成 | OK | 不可（常にExternalCopilotが生成される） |
+| `sf agent create` で作成 | OK | 不可（`--type internal` 指定でも常にExternalCopilotが生成される。2026-03再検証済み） |
+| `sf agent publish authoring-bundle` で作成 | OK | 不可（同上） |
 | Metadata API でBot作成 | OK | 不可 |
 | `BotDefinition.Type` を変更 | 不可（書き込み不可フィールド） | 不可 |
 | トピック/アクションをMetadata APIで追加 | OK（genAiPlugins/genAiFunctions） | 不可（デプロイ Succeeded でも無言で無視される） |
 | トピック/アクションをUI Agent Builderで追加 | OK | OK |
+
+> **注意**: `agentSpec.yaml` の `agentType: internal` はLLMのトピック生成コンテキストに影響するだけで、作成されるエージェントの種別（BotDefinition.Type）には一切影響しない。
 
 ### 0-5. Employee Agent（InternalCopilot）の作成方法
 
@@ -834,9 +839,9 @@ sf project deploy start \
 
 | メタデータ型 | 削除方法 |
 |---|---|
-| Bot | `sf agent deactivate` → `destructiveChanges.xml` で削除 |
+| Bot | `sf agent deactivate` → `destructiveChanges.xml` で削除。ただしAiAuthoringBundleが参照するBotはAgentGraphReference相互参照により削除不可（UIから削除が必要） |
 | GenAiPlannerBundle | **Metadata API での削除不可** → UIから削除 |
-| AiAuthoringBundle | **削除不可**（API/CLIサポートなし） |
+| AiAuthoringBundle | **削除不可**（API/CLI/Tooling APIいずれもサポートなし） |
 | GenAiPlugin | `destructiveChanges.xml` で削除可能 |
 | GenAiFunction | `destructiveChanges.xml` で削除可能 |
 
