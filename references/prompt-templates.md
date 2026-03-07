@@ -234,26 +234,49 @@ Agentforce エージェントのアクションとしてPrompt Templateを使う
 
 ### 7-1. GenAiPromptTemplate
 
+**重要: メタデータ構造はドキュメントと実際のorgで差異がある。必ず以下の実証済み構造を使用すること。**
+
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <GenAiPromptTemplate xmlns="http://soap.sforce.com/2006/04/metadata">
-    <activeVersionNumber>1</activeVersionNumber>
-    <description>テンプレートの説明</description>
+    <developerName>MyTemplate</developerName>
     <masterLabel>テンプレート表示名</masterLabel>
     <templateVersions>
-        <content>プロンプト本文（マージフィールド含む）</content>
+        <content>プロンプト本文（マージフィールド含む）
+{!$Input:myInput}
+</content>
         <inputs>
-            <apiName>myCase</apiName>
-            <dataType>SObject</dataType>
-            <definition>Case</definition>
+            <apiName>myInput</apiName>
+            <definition>primitive://String</definition>
+            <masterLabel>myInput</masterLabel>
+            <referenceName>Input:myInput</referenceName>
+            <required>true</required>
         </inputs>
-        <primaryModel>sfdc_ai__DefaultGPT4Omni</primaryModel>
+        <primaryModel>sfdc_ai__DefaultOpenAIGPT4OmniMini</primaryModel>
         <status>Published</status>
-        <versionNumber>1</versionNumber>
     </templateVersions>
-    <type>flex</type>
+    <type>einstein_gpt__flex</type>
+    <visibility>Global</visibility>
 </GenAiPromptTemplate>
 ```
+
+### 7-1a. デプロイ時の注意事項（実証済み）
+
+| 項目 | 正しい値 | よくある間違い |
+|---|---|---|
+| **type** | `einstein_gpt__flex`, `einstein_gpt__recordSummary` 等 | `flex`, `Flex`, `sfdc_ai__flex` |
+| **inputs.definition（テキスト）** | `primitive://String`（小文字のp） | `PRIMITIVE://String`, `Text`, `String` |
+| **inputs.definition（SObject）** | `SOBJECT://Case` 等 | `Case`, `SObject://Case` |
+| **inputs.referenceName** | `Input:<apiName>` | 省略不可（必須フィールド） |
+| **inputs.masterLabel** | 必須 | 省略するとエラー |
+| **primaryModel** | `sfdc_ai__DefaultOpenAIGPT4OmniMini` 等 | `sfdc_ai__DefaultGPT4Omni`（旧名、orgによる） |
+| **versionNumber** | 使用不可（v65.0以降） | `<versionNumber>1</versionNumber>` |
+| **activeVersionNumber** | 使用不可（v65.0以降） | `<activeVersionNumber>1</activeVersionNumber>` |
+| **description** | デプロイ時は省略推奨 | 含めるとエラーになる場合がある |
+| **developerName** | 明示的に指定 | 省略可だが明示推奨 |
+| **visibility** | `Global` | 省略可 |
+
+**Free Text入力はテンプレート新規作成時のみ指定可能（UI）。既存テンプレートへの後追加はできない。**
 
 ### 7-2. Retrieve / Deploy
 
