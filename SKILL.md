@@ -64,7 +64,7 @@ sf org login jwt \
 | Agentforce / GenAI Agent | `references/metadata-agentforce.md` | Agentforce、Agent、エージェント、GenAiPlugin、GenAiFunction、GenAiPlanner、Bot、BotVersion、AIエージェント、agentSpec |
 | Data360 データストリーム・取り込み | `references/data-streams.md` | データストリーム、Ingestion、取り込み、コネクタ、データソース、Data Cloud、Data360、CDP |
 | Data360 データモデル・マッピング・統合 | `references/data-model.md` | データモデル、DMO、DLO、Data Lake Object、マッピング、統合ルール、Identity Resolution、名寄せ |
-| Agentforce × Data Cloud連携 | `references/agentforce-integration.md` | グラウンディング、Data Graph、Semantic Search、ベクトル検索、RAG、Prompt Template |
+| Agentforce × Data Cloud連携・RAG | `references/agentforce-integration.md` | グラウンディング、Data Graph、Semantic Search、ベクトル検索、RAG、Retriever、Search Index、Data Library、チャンキング、Prompt Template、ナレッジ検索 |
 
 複数タイプにまたがる場合は複数ファイルを読み込む。
 
