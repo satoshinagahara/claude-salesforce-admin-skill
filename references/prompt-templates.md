@@ -13,7 +13,10 @@ Prompt Builder（Einstein 1 Studio）で作成・管理し、**Flow・Apex・RES
 | **Field Generation** | レコードの特定フィールドに LLM の生成結果を書き込む | レコードページ, Flow, Apex, REST API, Agentforce |
 | **Flex** | 任意の入力変数を定義可能（最大5つ）。最も汎用的 | Flow, Apex, REST API, Agentforce |
 | **Record Summary** | レコードの要約を生成 | Agentforce |
+| **Record Prioritization** | ユーザー入力やデータに基づきレコードを優先順位付け | Agentforce |
 | **Sales Email** | 営業メールを生成 | メールコンポーザー, Flow, Apex, REST API, Agentforce |
+| **Knowledge Answers** | Agentforceエージェントのナレッジ回答をカスタマイズ | Agentforce |
+| **Einstein AI-Generated Search Answers** | インデックス済みコンテンツから簡潔な回答を生成 | 検索 |
 
 **Flex テンプレートが最も汎用的で、多くのユースケースに対応可能。**
 
@@ -290,7 +293,87 @@ sf org list metadata \
 
 ---
 
-## 9. プロンプト設計のベストプラクティス
+## 9. 標準プロンプトテンプレートとExample Library
+
+### 9-1. テンプレートのカテゴリ
+
+Prompt Builder のテンプレートは3つのカテゴリに分類される：
+
+| カテゴリ | 説明 |
+|---|---|
+| **Standard** | Salesforceが提供する事前構成済みテンプレート。読み取り専用。全ユーザーがアクセス可能 |
+| **Custom** | 管理者がNew Prompt Templateボタンから新規作成したテンプレート |
+| **Pilot** | パイロットプログラム参加者のみ利用可能なテンプレート |
+
+### 9-2. 主な標準テンプレート
+
+Salesforceは各Cloud機能向けに事前構成された標準テンプレートを提供している。
+**標準テンプレートはSalesforceにより継続的に追加・更新されるため、実装時にorg内で確認すること。**
+
+| 機能領域 | 標準テンプレート例 | 説明 |
+|---|---|---|
+| **Service Cloud** | Service Replies（Contextual） | 進行中の会話に基づきサービス担当者への返信を自動生成 |
+| **Service Cloud** | Service Replies（Grounded） | ナレッジベースに基づき返信を生成 |
+| **Service Cloud** | Work Summaries for Case | ケース終了時にサマリー・問題・解決策を自動入力 |
+| **Service Cloud** | Summarize Case | ケースデータの要約を生成 |
+| **Sales Cloud** | Sales Emails | レコードデータに基づくパーソナライズされた営業メール |
+| **Agentforce** | Knowledge Answers | エージェントのナレッジ回答をカスタマイズ |
+
+### 9-3. 標準テンプレートのカスタマイズ
+
+標準テンプレートは**読み取り専用**のため直接編集不可。以下の方法でカスタマイズする：
+
+**方法1: Save as New Template（コピー作成）**
+1. Prompt Builder で標準テンプレートを開く
+2. **Save As** → **New Template** を選択
+3. 新しいカスタムテンプレートとして保存される
+4. コピーしたテンプレートを自由に編集
+
+**方法2: 新バージョン作成**
+1. 標準テンプレートを開く
+2. **Save As** → **New Version** を選択
+3. 新しいバージョンとして保存され、元のバージョンも保持される
+
+**カスタマイズのポイント：**
+- マージフィールドを追加してCRMデータを注入（`{!$User.FirstName}`, `{!$Input:conversation_object.EndUserContact.FirstName}` 等）
+- ブランドボイス（トーン・文体）を組織に合わせて調整（デフォルトは「concise and friendly」）
+- Flow・Apexをグラウンディングソースとして追加し、より豊富なデータを提供
+
+### 9-4. Example Prompt Template Library
+
+Prompt Builderには**例テンプレートライブラリ**が用意されている。
+サンプルテンプレートを参考にカスタムテンプレートを作成できる。
+
+- **Setup → Prompt Builder → Example Library** からアクセス
+- フォローアップメール、リードサマリー、オープンケースサマリー、ディールサマリー、カスタマーサービスメッセージ等のサンプルが含まれる
+- サンプルのプロンプト文言・構成・マージフィールドの使い方を参考にできる
+- そのまま使うのではなく、自組織のユースケースに合わせてカスタマイズすることが推奨
+
+### 9-5. 実装時の確認手順
+
+標準テンプレートもAgentforceアセットと同様、**実装タイミングでorg内の状況を確認**する：
+
+```bash
+# org内の全プロンプトテンプレートを一覧（標準・カスタム両方）
+sf org list metadata \
+  --metadata-type GenAiPromptTemplate \
+  --target-org <username>
+
+# Tooling API で詳細確認（カテゴリ・タイプ・ステータス）
+sf api request rest \
+  --method GET \
+  --url "/services/data/v62.0/tooling/query?q=SELECT+Id,DeveloperName,MasterLabel,Type,IsStandard+FROM+GenAiPromptTemplateVersion" \
+  --target-org <username>
+```
+
+**判断フロー：**
+1. 標準テンプレートで要件を満たせるか確認
+2. 満たせる場合 → そのまま利用、または「Save as New Template」でカスタマイズ
+3. 満たせない場合 → Example Libraryを参考にカスタムテンプレートを新規作成
+
+---
+
+## 10. プロンプト設計のベストプラクティス
 
 | 観点 | ガイドライン |
 |---|---|
@@ -303,7 +386,7 @@ sf org list metadata \
 
 ---
 
-## 10. よくあるエラーと対処
+## 11. よくあるエラーと対処
 
 | エラー | 原因 | 対処 |
 |---|---|---|
