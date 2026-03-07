@@ -901,7 +901,109 @@ sf project deploy start \
 
 ---
 
-## 16. ベストプラクティス
+## 16. アセットライブラリと再利用可能アセットの活用
+
+### 16-1. アセットライブラリとは
+
+Agent Builder のUIで「**+ New → Add from Asset Library**」から利用できる、Salesforceが事前構成した**標準トピック**と**標準アクション**のコレクション。最小限のカスタマイズで再利用でき、新規エージェント構築の出発点として推奨される。
+
+標準トピック・アクションはSalesforceにより継続的に追加・更新されるため、**静的なリストではなく、実装タイミングで都度orgを調査する**のが正しいアプローチ。
+
+### 16-2. エージェント作成時の推奨フロー（重要）
+
+**新しいエージェントを作成する際は、まず既存アセットの再利用を検討し、不足分のみ新規実装する。**
+
+```
+1. 要件整理
+   - エージェントの目的・対象ユーザー・必要な機能を明確にする
+
+2. org内の既存アセットを調査（標準 + カスタム両方）
+   - 標準トピック・アクション: アセットライブラリで確認
+   - 既存カスタムトピック・アクション: 他のエージェント用に作成済みのものも再利用可能
+   - 既存Apex @InvocableMethod / Flow: アクションとして登録可能なものがないか確認
+
+3. 判断
+   - 標準アセットで対応可能 → そのまま追加（必要に応じてカスタマイズ）
+   - 既存カスタムアセットで対応可能 → 再利用
+   - 不足がある → カスタムトピック/アクションを新規作成
+
+4. 新規実装（必要な場合のみ）
+   - アクション種別を選択: Apex / Flow / Prompt Template
+   - トピック設計: Classification Description / Scope / Instructions
+   - テスト → 有効化
+```
+
+### 16-3. org内アセットの調査方法（CLI）
+
+#### 既存トピック一覧の取得
+
+```bash
+# org内の全トピック（標準 + カスタム）を一覧表示
+sf data query \
+  --query "SELECT Id, DeveloperName, MasterLabel, PluginType, Language FROM GenAiPluginDefinition ORDER BY MasterLabel" \
+  --use-tooling-api \
+  --target-org <username>
+```
+
+#### 既存アクション一覧の取得
+
+```bash
+# org内の全アクション（標準 + カスタム）を一覧表示
+sf data query \
+  --query "SELECT Id, DeveloperName, MasterLabel FROM GenAiFunctionDefinition ORDER BY MasterLabel" \
+  --use-tooling-api \
+  --target-org <username>
+```
+
+#### 既存の再利用可能な Apex @InvocableMethod の確認
+
+```bash
+# @InvocableMethod を持つApexクラスを検索
+sf data query \
+  --query "SELECT Id, Name FROM ApexClass WHERE Name LIKE '%Controller%' OR Name LIKE '%Action%'" \
+  --use-tooling-api \
+  --target-org <username>
+```
+
+#### 既存エージェントの構成確認
+
+```bash
+# エージェント一覧とタイプ
+sf data query \
+  --query "SELECT Id, DeveloperName, MasterLabel, Type, AgentType FROM BotDefinition ORDER BY CreatedDate DESC" \
+  --target-org <username>
+```
+
+### 16-4. 標準アクションの代表例（参考）
+
+以下はEmployee Agentで利用可能な標準アクションの代表例。orgのエディション・設定により利用可能なアクションは異なる。
+
+| アクション名 | 説明 |
+|---|---|
+| Draft or Revise Email | 会話コンテキストを使ってメール作成・修正 |
+| Get Record Details | 特定レコードの詳細情報を取得 |
+| Identify Object by Name | オブジェクトを名前で特定 |
+| Identify Record by Name | レコードを名前で特定 |
+| Query Records | 条件に合う複数レコードを検索 |
+| Query Records with Aggregate | 集計クエリ（COUNT等） |
+| Summarize Record | レコードの要約を生成 |
+| Update Record | レコードを更新 |
+| Answer Questions with Knowledge | ナレッジ記事/Data LibraryベースのQ&A |
+
+### 16-5. Apex Actionのベストプラクティス
+
+| 観点 | ガイドライン |
+|---|---|
+| **ラベル・説明** | Atlas推論エンジンがアクション選択に使う。明確かつ具体的に記述する |
+| **再利用性** | 汎用的に設計し、スキーマに密結合しない。複数エージェント/トピックで再利用可能にする |
+| **セキュリティ** | `with sharing` を使用。必要最小限のフィールドのみ返す。パブリックアクションではSOQLを制限 |
+| **エラーハンドリング** | try-catchでユーザーフレンドリーなメッセージを返す。Database クラスで部分的処理に対応 |
+| **パフォーマンス** | バルク化、SOQLフィルタリング、非同期処理（Queueable）を活用。大規模アクションは分割 |
+| **依存関係** | 複数アクションの実行順序はtopic instructionsと変数で制御。決定論的処理が必要なら複合アクション（1つのApex/Flowに統合） |
+
+---
+
+## 17. その他のベストプラクティス
 
 - **Agent作成は `sf agent create` を使う**（手動のMetadata API Botデプロイは制限多い）
 - **Employee Agent（InternalCopilot）はUIから作成する**（CLIでは不可）
