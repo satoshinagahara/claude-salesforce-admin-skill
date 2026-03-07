@@ -14,7 +14,12 @@ APIバージョン60以上が必要。GenAiPlannerBundleはv64以上、AiAuthori
 |---|---|---|---|
 | `Bot` | Einstein Bot | 従来型チャットボット（ダイアログベース） | 外部顧客 |
 | `ExternalCopilot` | Agentforce Service Agent | LLM推論ベースの顧客向けAIエージェント | 外部顧客 |
-| `InternalCopilot` | Agentforce (Default) / Employee Agent | Salesforce CRM内で社内ユーザーが使うAIアシスタント | 社内ユーザー |
+| `InternalCopilot` | Agentforce 従業員エージェント | Salesforce CRM内で社内ユーザーが使うAIアシスタント | 社内ユーザー |
+
+> **重要: Agentforce（デフォルト）は非推奨**
+> 2025年6月17日以降、Agentforce（デフォルト）には新機能・改善が提供されない。新しいSalesforce環境では使用不可。
+> **Agentforce 従業員エージェント（Employee Agent）への移行が推奨**される。
+> 従業員エージェントは複数作成可能、テンプレート対応、Slack/Experience Cloud連携が可能。
 
 ### 0-2. BotDefinition.AgentType の値
 
@@ -22,17 +27,23 @@ APIバージョン60以上が必要。GenAiPlannerBundleはv64以上、AiAuthori
 |---|---|---|
 | null | `Bot` | 従来型Einstein Bot |
 | `EinsteinServiceAgent` | `ExternalCopilot` | Agentforce Service Agent（顧客向け） |
-| `AgentforceEmployeeAgent`（UI自動設定） | `InternalCopilot` | Employee Agent（社内向け） |
+| `EinsteinCopilot` | `InternalCopilot` | Agentforce（デフォルト）— **非推奨**。従業員エージェントへの移行推奨 |
+| `AgentforceEmployeeAgent` | `InternalCopilot` | Agentforce 従業員エージェント（後継。UI で作成） |
 
-> **注意**: AgentType値は以前 `EinsteinCopilot` だったが `AgentforceEmployeeAgent` に変更された（2026-03確認）。
+> **Agentforce（デフォルト）→ 従業員エージェントの移行**: Setup → Agents → Agentforce(デフォルト)のドロップダウン → 「従業員エージェントに移行」で自動移行可能。トピック・アクション・変数・設定が引き継がれる。
 
 ### 0-3. 種別ごとの利用シーン比較
 
 | 種別 | 配置場所 | アクセス | ライセンス |
 |---|---|---|---|
-| ExternalCopilot | 外部サイト・メッセージング | 外部顧客 | Agentforce for Service |
-| InternalCopilot | Salesforce Lightning UI（コパイロットパネル） | Salesforceログイン済みユーザー | Agentforce for Employees |
+| ExternalCopilot (Service Agent) | 外部サイト・メッセージング | 外部顧客 | Agentforce for Service |
+| InternalCopilot (従業員エージェント) | Lightning Experience・Salesforceモバイル・Slack・Experience Cloud Webメッセージング | Salesforceログイン済みユーザー | Agentforce for Employees |
+| InternalCopilot (デフォルト・非推奨) | Lightning Experience・Salesforceモバイル | Salesforceログイン済みユーザー | Agentforce for Employees |
 | Bot | Embedded Messaging等 | 外部顧客（従来型） | Einstein Bot |
+
+**Agentforce（デフォルト）と従業員エージェントの主な違い:**
+- デフォルト: orgに1つのみ。テンプレート非対応。Lightning/モバイルのみ
+- 従業員エージェント: 複数作成可。テンプレート対応。Slack・Experience Cloud連携可。UIで権限管理が容易
 
 ### 0-4. CLI・API の制限
 
@@ -51,15 +62,26 @@ APIバージョン60以上が必要。GenAiPlannerBundleはv64以上、AiAuthori
 
 Employee Agent は CLI から作成できないため、**Salesforceセットアップ画面から作成**する：
 
-1. Setup → Agents → **New** ボタン
-2. エージェント種別で **"Employee Agent"** を選択
+#### 新規作成（Agentforce 従業員エージェント）
+1. Setup → Agents → **New** ボタン（Agent Creator のガイド付き設定が起動）
+2. **Agentforce 従業員エージェント** テンプレートを選択
 3. 名前・説明を入力して保存
 4. Agent Builder で トピック・アクションを設定
 5. 作成後は `sf project retrieve start --metadata "Bot:<APIName>"` で取得可能
 
+#### Agentforce（デフォルト）からの移行
+1. Setup → Agents → Agentforce(デフォルト)のドロップダウンメニュー
+2. 「**従業員エージェントに移行（Migrate to an Employee Agent）**」を選択
+3. 新しいエージェントの名前・API参照名を入力 → 作成
+4. トピック・アクション・変数・設定が自動引き継ぎされる
+5. 移行後、ユーザーにアクセス権を付与して有効化
+6. 旧Agentforce（デフォルト）を無効化
+
+> **注意**: カスタムプロンプト、名前を変更したアクション、権限セット/プロファイルの表示設定は新エージェントで再作成が必要。
+
 作成後のメタデータ：
 - `Bot.type = InternalCopilot`
-- `Bot.agentType = EinsteinCopilot`（自動設定）
+- `Bot.agentType = AgentforceEmployeeAgent`（自動設定）
 - `GenAiPlannerBundle.plannerSurfaces` に Employee 向けの surface（UI自動設定）
 
 ### 0-6. InternalCopilot の正しい実装フロー
@@ -872,8 +894,10 @@ sf project deploy start \
 
 1. **Setup → Einstein Setup** → Einstein を有効化
 2. **Setup → Agents → Agentforce Agents** を有効化
-3. **Setup → Agents → Enable the Agentforce (Default) Agent** をオン（Employee Agent用）
-4. AgentforceライセンスがUserに割り当て済みであること
+3. AgentforceライセンスとFlex Creditsがプロビジョニング済みであること
+4. **Employee Agent の場合**: Setup → Agents → New → **Agentforce 従業員エージェント** テンプレートで作成
+   - ~~旧方式: 「Enable the Agentforce (Default) Agent」をオン~~ → **非推奨（2025年6月17日以降、新機能なし・新環境で使用不可）**
+   - 既にAgentforce（デフォルト）を使用中の場合は「従業員エージェントに移行」で移行可能
 
 ---
 
