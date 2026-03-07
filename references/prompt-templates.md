@@ -220,13 +220,46 @@ sf api request rest \
 
 ## 6. Agentforce アクションとしての利用
 
-Agentforce エージェントのアクションとしてPrompt Templateを使う方法は `metadata-agentforce.md` セクション9を参照。
+### 6-1. 基本手順
 
-要約:
 1. Setup → **Agent Actions** → New Agent Action
 2. Reference Action Type: **Prompt Template** → テンプレートを選択
 3. Action Instructions（エージェントがこのアクションを使う条件）を記述
 4. Agent Builder でトピックにアクションを追加
+
+### 6-2. Agentforceにおける役割（重要）
+
+**Agentforce では Agent LLM と Prompt Template LLM は別物。**
+
+- **Agent LLM** = トピック選択 + アクション推論（ルーティング）のみ。テキスト生成はしない
+- **Prompt Template LLM** = 実際のテキスト生成（要約・分析・示唆等）を担当
+
+したがって、ユーザーに対して要約や分析結果を返したい場合、**GenAiFunction（Apex）でデータを取得 → Prompt Templateで生成** というアクションチェーンが必要。
+
+### 6-3. 典型パターン: Apex データ取得 → Prompt Template 生成
+
+```
+[トピック: 取引先分析]
+  アクション1: 取引先総合分析（GenAiFunction → Apex）
+    → 取引先の商談・ケース・活動等を一括取得してJSONで返す
+  アクション2: 取引先インサイト生成（Agent Action → Prompt Template）
+    → JSONデータを受け取り、LLMで要約+アクション示唆を生成
+
+  Topic Instructions:
+    「まずアクション1を実行しデータを取得、
+     その結果をアクション2のanalysisDataに渡して分析レポートを生成」
+```
+
+**Prompt Template（Flex）の入力にFree Textを使用し、Apexの出力（JSON文字列）をそのまま渡す設計が実証済み。**
+
+### 6-4. 設計時の注意点
+
+| 観点 | ガイドライン |
+|---|---|
+| **アクション数** | トピック内は必要最小限に。重複アクション（個別取得 vs 一括取得）があるとAgent LLMが迷う |
+| **実行順序** | Topic Instructionsで明示的に記述（「まずAを実行し、結果をBに渡す」） |
+| **データ受け渡し** | Apex出力 → Prompt Template入力の対応を Instructions で明記 |
+| **プロンプト設計** | データに依存する指示（通貨形式等）は実データに合わせる。存在しないデータについて言及させない |
 
 ---
 

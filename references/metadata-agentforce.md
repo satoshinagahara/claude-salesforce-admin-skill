@@ -88,12 +88,63 @@ Employee Agent は CLI から作成できないため、**Salesforceセットア
 
 ```
 1. Apex クラス作成（@InvocableMethod, @InvocableVariable）→ sf project deploy start
-2. UIでEmployee Agentを新規作成（Setup → Agents → New → "Employee Agent"）
-3. UIのAgent Builderでトピックを作成（Topics タブ → + New Topic）
-4. UIでアクションを追加（+ Add from Asset Library → Apex アクション選択）
-5. Activate
-6. Metadata リトリーブでローカル保存
+2. GenAiFunction 作成 → sf project deploy start
+3. Prompt Template 作成（必要な場合）→ sf project deploy start
+4. UIでEmployee Agentを新規作成（Setup → Agents → New → "Employee Agent"）
+5. UIのAgent Builderでトピックを作成（Topics タブ → + New Topic）
+6. UIでアクションを追加（+ Add from Asset Library → Apex/Prompt Template アクション選択）
+7. トピック Instructions を記述（アクションの実行順序・条件を明確に指示）
+8. Activate → テスト
+9. Metadata リトリーブでローカル保存
    sf project retrieve start --metadata "GenAiPlannerBundle:<APIName>"
+```
+
+### 0-7. Agentforce のアーキテクチャ（重要な理解）
+
+**Agent LLM と Prompt Template LLM の役割分担:**
+
+```
+[ユーザーの質問]
+    ↓
+[Agent LLM] ← トピック選択 + アクション推論（ルーティングのみ）
+    ↓           ※ Agent LLM 自身はテキスト生成・要約・分析を行わない
+[アクション実行]
+    ├→ GenAiFunction (Apex) → データ取得のみ、LLM呼び出しなし
+    └→ Prompt Template → 内部でLLMを呼び出してテキスト生成（要約・分析・示唆等）
+    ↓
+[結果をユーザーに返す]
+```
+
+- **Agent LLM**: どのトピック・アクションを使うかの判断（推論）のみ
+- **GenAiFunction (Apex)**: データの取得・加工。LLMは関与しない
+- **Prompt Template**: 実際のテキスト生成（要約、分析、示唆等）を担当するLLMを呼び出す
+
+**設計上の示唆:**
+- データ取得だけのApexアクションを直接ユーザーに返しても、生のJSONが返るだけで意味がない
+- **要約・分析・示唆が必要な場合は、必ずPrompt Templateアクションを組み合わせる**
+- Agent LLMはアクションのチェーン（複数アクションの順序実行）が可能。トピックInstructionsで実行順序を明示する
+
+### 0-8. トピック設計のベストプラクティス（実証済み）
+
+**アクション数の最適化:**
+- トピック内のアクション数は**必要最小限**に絞る
+- 重複するアクション（個別取得 vs 一括取得）があるとAgent LLMがどれを呼ぶか迷う
+- 例: 個別5アクション + 統合1アクション → 統合1アクションに集約
+
+**Instructions の書き方:**
+- アクションの**実行順序を明示**する（「まずAを実行し、その結果をBに渡す」）
+- アクション間の**データの受け渡し方法を明示**する
+- **対応する質問の例**を含める（Agent LLMのトピック選択精度向上）
+
+**典型的なパターン: データ取得 → LLM生成:**
+```
+## 実行手順
+必ず以下の順序で実行してください：
+1. まず「データ取得アクション」を実行し、データを取得する
+   - [入力パラメータの説明]
+2. 次に「Prompt Templateアクション」を実行する
+   - [入力に手順1の結果を渡す旨の説明]
+3. 手順2の結果をユーザーに返す
 ```
 
 ---
