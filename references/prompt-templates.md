@@ -222,10 +222,11 @@ sf api request rest \
 
 ### 6-1. 基本手順
 
-1. Setup → **Agent Actions** → New Agent Action
-2. Reference Action Type: **Prompt Template** → テンプレートを選択
-3. Action Instructions（エージェントがこのアクションを使う条件）を記述
-4. Agent Builder でトピックにアクションを追加
+1. Prompt Builder でテンプレートを **Activate（有効化）** する（未有効化だとアクション作成時に選択肢に表示されない）
+2. Setup → **Agent Actions** → New Agent Action
+3. Reference Action Type: **Prompt Template** → テンプレートを選択
+4. Action Instructions（エージェントがこのアクションを使う条件）を記述
+5. Agent Builder でトピックにアクションを追加
 
 ### 6-2. Agentforceにおける役割（重要）
 
