@@ -104,11 +104,18 @@ export default class ComponentName extends LightningElement {
     </targets>
     <targetConfigs>
         <targetConfig targets="lightning__RecordPage">
-            <property name="recordId" type="String" label="レコードID"/>
+            <objects>
+                <object>Account</object>
+                <object>Case</object>
+            </objects>
         </targetConfig>
     </targetConfigs>
 </LightningComponentBundle>
 ```
+
+**重要な注意点:**
+- **`<objects>` は必ず指定する**: 特定オブジェクトのレコードページで使う場合、`targetConfigs` 内に `<objects>` を明示すること。省略するとApp Builderのカスタムコンポーネント一覧に表示されない場合がある。汎用コンポーネントでも使用予定のオブジェクトを列挙しておく。
+- **`masterLabel` は使わない**: `masterLabel` を設定するとApp Builderでコンポーネント名の代わりに `masterLabel` が表示名になる。ユーザーがコンポーネント名（camelCase）で検索しても見つからなくなるため、`masterLabel` は設定しないことを推奨。`description` も同様に省略してよい。
 
 **targets（配置場所）の主要選択肢**:
 - `lightning__RecordPage`: レコード詳細ページ
@@ -199,7 +206,49 @@ export default class AccountTable extends LightningElement {
 </template>
 ```
 
-### 4-4. 子コンポーネントへのイベント送信
+### 4-4. 汎用LWC（オブジェクト非依存・WhatId活用）
+
+`recordId` + Apex側で `WhatId` ベースのSOQLを使うと、オブジェクトに依存しない汎用LWCが作れる。
+
+```javascript
+// Apex: WhatIdでActivityを取得（オブジェクト非依存）
+@AuraEnabled(cacheable=true)
+public static Map<String, Object> getEffortData(Id recordId) {
+    List<Event> events = [
+        SELECT Id, OwnerId, Owner.Name, StartDateTime, EndDateTime, DurationInMinutes
+        FROM Event WHERE WhatId = :recordId
+    ];
+    List<Task> tasks = [
+        SELECT Id, OwnerId, Owner.Name, ActivityDate
+        FROM Task WHERE WhatId = :recordId
+    ];
+    // ... 集計処理 ...
+}
+```
+
+```javascript
+// LWC JS: recordIdを渡すだけ
+@wire(getEffortData, { recordId: '$recordId' })
+wiredData({ data, error }) { ... }
+```
+
+```xml
+<!-- meta.xml: 使用予定のオブジェクトを列挙して汎用配置 -->
+<targetConfigs>
+    <targetConfig targets="lightning__RecordPage">
+        <objects>
+            <object>Case</object>
+            <object>Opportunity</object>
+            <object>Account</object>
+            <object>Corrective_Action__c</object>
+        </objects>
+    </targetConfig>
+</targetConfigs>
+```
+
+このパターンは活動工数集計、関連レコード数表示など、複数オブジェクトで共通して使えるコンポーネントに有効。
+
+### 4-5. 子コンポーネントへのイベント送信
 
 ```javascript
 // 親 → 子: @api プロパティで渡す
@@ -284,3 +333,6 @@ sf data query \
 | `Template error` | HTMLテンプレートの構文エラー | `<template>`タグの閉じ忘れ等を確認 |
 | `Wire adapter error` | @wireのプロパティ名誤り | Apexメソッドの引数名と一致させる |
 | `Cannot read properties of undefined` | データロード前にアクセス | `if:true={data}`で条件分岐を追加 |
+| App Builderにコンポーネントが表示されない | `targetConfigs`に`<objects>`未指定 | 使用予定のオブジェクトを`<objects>`に列挙する |
+| App Builderでコンポーネント名で検索しても見つからない | `masterLabel`が設定されている | `masterLabel`の値で検索するか、`masterLabel`を削除する |
+| ホームページのApp Builderにコンポーネントが出てこない | `<targets>`に`lightning__HomePage`が含まれていない | meta.xmlの`<targets>`に`<target>lightning__HomePage</target>`を追加してデプロイ。**各配置場所ごとにtargetの明示指定が必要**（RecordPageのみだとHomePage/AppPageには表示されない） |
