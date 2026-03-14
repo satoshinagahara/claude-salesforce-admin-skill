@@ -545,6 +545,7 @@ sf api request rest \
 | エラー | 原因 | 対処 |
 |---|---|---|
 | テンプレートがFlowのAction一覧に表示されない | テンプレートが未Activate | Prompt Builder で Activate する |
+| デプロイ後にテンプレートが動作しない | **Metadata APIデプロイではActivate状態が反映されない** | デプロイ後にPrompt Builder UIで手動Activateが必要。デプロイ完了時にユーザーに伝えること |
 | `Prompt template not found` | API名の誤り / 未デプロイ | `sf org list metadata --metadata-type GenAiPromptTemplate` で確認 |
 | `Einstein Generative AI is not enabled` | Einstein未有効化 | Setup → Einstein Setup で有効化 |
 | LLM応答が空 / エラー | Einstein Trust Layer でブロック | プロンプト内容を調整（有害コンテンツ判定を回避） |

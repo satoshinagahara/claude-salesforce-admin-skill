@@ -61,6 +61,40 @@ sf project retrieve start \
 - `ReadWrite`: 読み書き共有
 - `ControlledByParent`: 親オブジェクトに依存（Master-Detail時）
 
+### 2-3. カスタムオブジェクト作成時の必須付随作業
+
+**カスタムオブジェクトをデプロイしただけではユーザーがアクセスできない。以下を必ずセットで実施すること：**
+
+| # | 作業 | 説明 | 参照 |
+|---|---|---|---|
+| 1 | **タブの作成** | `tabs/<ObjectName__c>.tab-meta.xml` を作成してデプロイ。タブがないとアプリランチャーやナビゲーションに表示されない | 下記テンプレート |
+| 2 | **権限セットにオブジェクト権限を追加** | `objectPermissions` でCRUD権限を付与 | metadata-security.md |
+| 3 | **権限セットにフィールド権限（FLS）を追加** | `fieldPermissions` で各フィールドのread/editを付与。**必須項目(required=true)とMD関係項目はFLS設定不可なので除外** | metadata-security.md |
+| 4 | **権限セットにタブ可視性を追加** | `tabSettings` でVisibleに設定。これがないとタブが表示されない | metadata-security.md |
+| 5 | **権限セットのデプロイ** | 上記1〜4をまとめてデプロイ | — |
+
+**タブXMLテンプレート:**
+```xml
+<!-- tabs/<ObjectName__c>.tab-meta.xml -->
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomTab xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customObject>true</customObject>
+    <motif>Custom70: Handsaw</motif>
+</CustomTab>
+```
+
+**権限セットへの追記例（tabSettings）:**
+```xml
+<tabSettings>
+    <tab>MyObject__c</tab>
+    <visibility>Visible</visibility>
+</tabSettings>
+```
+
+**⚠️ 権限セットXMLの要素順序を守ること:**
+`classAccesses → fieldPermissions → hasActivationRequired → label → objectPermissions → recordTypeVisibilities → tabSettings`
+（アルファベット順。順序違反はデプロイエラーになる）
+
 ---
 
 ## 3. カスタム項目（フィールド）の追加
