@@ -47,7 +47,7 @@ sf project retrieve start \
 
 ```bash
 # プロジェクトディレクトリ内で実行
-cd ~/sf-admin-work/sf-admin-project
+cd ~/claude/sf-admin-project
 
 sf lightning generate component \
   --name <componentName> \
@@ -292,7 +292,7 @@ handleSave() {
 
 ```bash
 # 作業ディレクトリに移動
-cd ~/sf-admin-work/sf-admin-project
+cd ~/claude/sf-admin-project
 
 # Validate（デプロイ前必須）
 sf project deploy validate \

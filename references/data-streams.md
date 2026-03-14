@@ -226,3 +226,4 @@ sf project retrieve start \
 | `Connector not active` | コネクタが無効状態 | UIでコネクタをActivateする |
 | `Rate limit exceeded` | Ingestion APIのレート制限 | バッチサイズを調整、間隔を空ける |
 | `Field mapping required` | フィールドマッピング未設定 | Data ModelでDLO→DMOのマッピングを設定 |
+| `/ssot/` API が `NOT_FOUND` | Data Cloudは有効でもAPIユーザーに `CDPAdmin` 権限セットが未割り当て | `CDPAdmin` をPermissionSetAssignmentで割り当てる |

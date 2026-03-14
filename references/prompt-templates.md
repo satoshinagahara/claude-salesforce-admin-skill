@@ -203,11 +203,12 @@ temperatureはApex ConnectApiの`additionalConfig.temperature`でのみ設定可
 
 ## 5. REST API からの呼び出し
 
+### 5-1. SObject 入力の場合
+
 ```bash
-# Connect REST API エンドポイント
 sf api request rest \
   --method POST \
-  --url "/services/data/v66.0/einstein/prompt-templates/<templateApiName>/generations" \
+  "/services/data/v66.0/einstein/prompt-templates/<templateApiName>/generations" \
   --body '{
     "isPreview": false,
     "inputParams": {
@@ -221,8 +222,47 @@ sf api request rest \
       "temperature": 0
     }
   }' \
-  --target-org <username>
+  -o <username>
 ```
+
+### 5-2. Free Text（primitive://String）入力の場合（実証済み）
+
+**重要: Free Text入力は `inputParams` 直下ではなく `inputParams.valueMap` 内に配置する。直下に置くと `Unrecognized field` エラーになる。**
+
+```bash
+# Python経由が確実（JSONキーにコロンを含むため）
+python3 -c "
+import subprocess, json
+body = json.dumps({
+    'isPreview': False,
+    'inputParams': {
+        'valueMap': {
+            'Input:userQuestion': {
+                'value': '質問テキスト'
+            }
+        }
+    },
+    'additionalConfig': {
+        'numGenerations': 1,
+        'temperature': 0,
+        'applicationName': 'PromptBuilderPreview'
+    }
+})
+result = subprocess.run([
+    'sf', 'api', 'request', 'rest', '--method', 'POST',
+    '/services/data/v66.0/einstein/prompt-templates/<templateApiName>/generations',
+    '--body', body, '-o', '<username>'
+], capture_output=True, text=True, timeout=90)
+print(result.stdout)
+"
+```
+
+### 5-3. isPreview パラメータ
+
+| 値 | 動作 | 用途 |
+|---|---|---|
+| `false` | Retriever検索 → LLM生成まで実行 | 本番呼び出し |
+| `true` | Retriever検索 + プロンプト解決のみ（LLM生成なし） | デバッグ。検索スコアやチャンク内容の確認に有用 |
 
 外部システムからSalesforceのPrompt Templateを呼び出す場合に使用。
 
@@ -408,6 +448,69 @@ Prompt Template 自体は引き続き Prompt Builder で管理・テスト・バ
 | **visibility** | `Global` | 省略可 |
 
 **Free Text入力はテンプレート新規作成時のみ指定可能（UI）。既存テンプレートへの後追加はできない。**
+
+### 7-1b. Retriever（Data Cloud グラウンディング）付きテンプレート（実証済み）
+
+Retrieverをグラウンディングソースとして使用する場合、`templateDataProviders` 要素が必要。
+**マージフィールドは `{!$Retriever.xxx}` ではなく `{!$EinsteinSearch:xxx.results}` を使用する。**
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<GenAiPromptTemplate xmlns="http://soap.sforce.com/2006/04/metadata">
+    <developerName>RAGTestFAQ</developerName>
+    <masterLabel>RAG Test FAQ</masterLabel>
+    <templateVersions>
+        <content>あなたはITヘルプデスクアシスタントです。
+
+--- ナレッジベース ---
+{!$EinsteinSearch:File_ADL_FAQ_1Cx_dKvc698cb92.results}
+--- ここまで ---
+
+質問: {!$Input:userQuestion}
+
+回答:</content>
+        <inputs>
+            <apiName>userQuestion</apiName>
+            <definition>primitive://String</definition>
+            <masterLabel>userQuestion</masterLabel>
+            <referenceName>Input:userQuestion</referenceName>
+            <required>true</required>
+        </inputs>
+        <primaryModel>sfdc_ai__DefaultOpenAIGPT4OmniMini</primaryModel>
+        <status>Published</status>
+        <templateDataProviders>
+            <definition>invocable://getEinsteinRetrieverResults/<RetrieverApiName></definition>
+            <description>Retriever表示名</description>
+            <label>Retriever表示名</label>
+            <parameters>
+                <definition>primitive://String</definition>
+                <isRequired>true</isRequired>
+                <parameterName>searchText</parameterName>
+                <valueExpression>{!$Input:userQuestion}</valueExpression>
+            </parameters>
+            <referenceName>EinsteinSearch:<RetrieverApiName></referenceName>
+        </templateDataProviders>
+    </templateVersions>
+    <type>einstein_gpt__flex</type>
+    <visibility>Global</visibility>
+</GenAiPromptTemplate>
+```
+
+**templateDataProviders の要素:**
+
+| 要素 | 値 | 説明 |
+|---|---|---|
+| `definition` | `invocable://getEinsteinRetrieverResults/<RetrieverApiName>` | Retriever呼び出し定義 |
+| `description` / `label` | Retrieverの表示名 | UI表示用 |
+| `parameters.parameterName` | `searchText` | 固定値。検索クエリのパラメータ名 |
+| `parameters.valueExpression` | `{!$Input:<inputApiName>}` | 検索テキストにバインドするFree Text入力変数 |
+| `referenceName` | `EinsteinSearch:<RetrieverApiName>` | content内のマージフィールドと対応 |
+
+**注意:**
+- content内のマージフィールド: `{!$EinsteinSearch:<RetrieverApiName>.results}`
+- Prompt Builder UIでは `{!$Retriever.xxx}` と表示されるが、メタデータ上は `{!$EinsteinSearch:xxx.results}` が正しい
+- RetrieverのAPI参照名は Einstein Studio → Retrievers で確認可能
+- Metadata APIデプロイでは `status: Published` にしてもActivate状態にならない。デプロイ後にPrompt Builder UIで手動Activateが必要
 
 ### 7-2. Retrieve / Deploy
 

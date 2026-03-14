@@ -242,3 +242,4 @@ sf data query \
 | `Identity resolution job failed` | 統合ルールのエラー | ルールセットの設定を確認、データ品質をチェック |
 | `Mapping conflict` | 同一フィールドに複数マッピング | マッピングの重複を解消 |
 | `DLO not available` | データストリームが未同期 | ストリームのステータスを確認、手動リフレッシュ |
+| `/ssot/` API が `NOT_FOUND` | Data Cloudは有効でもAPIユーザーに `CDPAdmin` 権限セットが未割り当て | `CDPAdmin` をPermissionSetAssignmentで割り当てる |
