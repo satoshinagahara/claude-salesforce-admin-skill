@@ -217,7 +217,84 @@ sf project retrieve start \
 
 ---
 
-## 6. よくあるエラーと対処
+## 6. Amazon S3 Cloud Storage Connector
+
+### 6-1. セットアップ手順
+
+1. Data Cloud Setup → Other Connectors → New → Amazon S3
+2. Access Key ID / Secret Access Key / Bucket Name / Root Folder を設定
+3. Test Connection → Save
+4. データストリームを作成（ファイル指定）
+
+### 6-2. IAMポリシー（最小権限）
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:ListBucket",
+                "s3:GetBucketLocation"
+            ],
+            "Resource": [
+                "arn:aws:s3:::<bucket-name>",
+                "arn:aws:s3:::<bucket-name>/*"
+            ]
+        }
+    ]
+}
+```
+
+### 6-3. ワイルドカードファイル取り込み
+
+- ファイル名に `*.csv` を指定すると、フォルダ内の全CSVを取り込める
+- 全ファイルのスキーマ（カラム名・型）が統一されている必要がある
+- 新しいファイルがバケットに追加されると、次回のスケジュール実行時に自動取り込み
+
+### 6-4. 差分管理
+
+- Incrementalモードではファイルの最終更新日時で差分を検出
+- Primary Key指定でUpsert動作（同一キーは更新、新規は挿入）
+- ファイル上書きアップロードでファイル全体が再取り込み対象になる
+
+---
+
+## 7. DLOカテゴリの重要性（設計上の最重要判断）
+
+DLO作成時のカテゴリ選択がDMOマッピング先とID解決参加可否を決定する。**作成後の変更不可。**
+
+| カテゴリ | マッピング可能なDMO | Identity Resolution | 用途 |
+|---|---|---|---|
+| **プロファイル** | Individual, Contact Point Email/Phone/Address | **参加可能** | 人物・顧客マスター情報 |
+| **エンゲージメント** | イベント系DMO、カスタムエンゲージメントDMO | **参加不可** | 行動・インタラクションデータ |
+| **その他** | Account, Product等の参照データ系 | 参加不可 | マスターデータ、参照テーブル |
+
+### 外部データにメール等の識別情報があり名寄せしたい場合
+
+**DLOを2つに分割する（正攻法）:**
+1. プロファイルDLO（プロファイルカテゴリ）: メール+名前 → Individual + Contact Point Email
+2. エンゲージメントDLO（エンゲージメントカテゴリ）: 回答内容等 → カスタムDMO → Contact Point Emailへリレーション
+
+**代替: Data Graphのリレーション結合で代替**
+- カスタムDMOのメール項目からContact Point Emailへリレーションを定義
+- Data Graphで結合（統合プロファイルは生成されないが、データ結合は可能）
+
+---
+
+## 8. データストリーム再作成時のAPI名変更
+
+DLOのデータストリームを削除→再作成すると、カラムのAPI名（`default_0__c` 〜 `default_N__c`）が**振り直される**。
+
+- CSVに列を追加・削除した場合も同様に変更される
+- queryv2やApexでAPI名をハードコードしている場合、**全箇所の修正が必要**
+- 対策: データストリーム再作成後は `SELECT * FROM xxx__dlm LIMIT 1` でメタデータを確認し、API名のマッピングを更新する
+
+---
+
+## 9. よくあるエラーと対処
 
 | エラー | 原因 | 対処 |
 |---|---|---|

@@ -47,7 +47,19 @@ Prompt Builder（Einstein 1 Studio）で作成・管理し、**Flow・Apex・RES
 | **関連リスト** | `{!$RelatedList:myCase.CaseComments.Records}` | 関連レコードのデータ |
 | **Flow** | `{!$Flow.FlowName}` | Flowで取得したデータを注入 |
 | **Apex** | `{!$Apex.ClassName}` | Apexで取得したデータを注入 |
-| **Retriever** | `{!$Retriever.RetrieverName}` | Data Cloud Search Index経由（RAG） |
+| **Retriever** | `{!$Retriever.RetrieverName}` | Data Cloud Search Index経由（RAG）。非構造化テキストのセマンティック検索 |
+| **Data Graph** | Record Data として接続 | Data Cloud Data Graph経由。構造化された関連データの提供 |
+
+### 2-4. Retriever vs Data Graph の使い分け
+
+| コンポーネント | 対象 | 用途 | 例 |
+|---|---|---|---|
+| **Retriever** | Search Index（個別DMO） | 非構造化テキストのセマンティック検索 | アンケートのpain_points/commentsから類似テキストを検索 |
+| **Data Graph** | 複数DMOの結合ビュー | 構造化された関連レコード群の確実な提供 | 取引先Xに紐づく全アンケート回答を取得 |
+
+- **Search IndexはData Graphに直接作成できない。個別DMOに作成する**
+- Prompt Templateでは**Retriever + Data Graphの併用が可能**（推奨）
+- Retriever = 「関連テキストを見つける」、Data Graph = 「関連レコード群を確実に渡す」という役割分担
 
 ---
 

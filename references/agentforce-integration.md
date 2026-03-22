@@ -616,3 +616,43 @@ sf data create record --sobject PermissionSetAssignment \
 | `Data Library temporarily unavailable` | ADLのインデックス構築中 | 構築完了まで待つ（ファイル数・サイズに依存） |
 | `File exceeds size limit` | アップロードファイルが制限超過 | テキスト/HTML: 4MB以下、PDF: 100MB以下に分割 |
 | チャンク検索結果が不正確 | チャンキング戦略が不適切 | Hybrid Searchに変更、チャンクサイズを調整、Rebuild |
+
+---
+
+## 12. RAGの適用判断ガイドライン（実証済み）
+
+RAG（Retriever）はセマンティック検索には強いが、全件分析・集計には不向き。要件に応じて使い分ける。
+
+### 判断フロー
+
+```
+「LLMに渡すデータをどう選ぶか？」
+
+全件渡せるサイズ（〜数百件）？ → Data Cloud queryv2で全件取得 → Prompt Templateに直接渡す
+  ↓ No
+構造化条件でフィルタ可能？ → queryv2でフィルタ → Prompt Templateに直接渡す
+  ↓ No
+自由テキストの意味検索が必要？ → RAG（Retriever + Search Index）を使う
+```
+
+### パターン別の使い分け
+
+| 要件 | 方式 | 理由 |
+|---|---|---|
+| 全件の傾向分析・集計 | queryv2直接 | 少数派の意見（ネガティブ等）が漏れない |
+| 特定条件でのフィルタ分析 | queryv2直接 | 構造化フィールド（会社名、日付等）での正確なフィルタが可能 |
+| 対話型の質問応答 | RAG（Retriever） | 「この顧客について教えて」のような自由な質問にはセマンティック検索が適切 |
+| 大量データからの関連情報抽出 | RAG（Retriever） | 数千件のナレッジから関連記事を探す等 |
+
+### RAGが不適切なケースの具体例
+
+- **アンケート全件の傾向分析**: Retrieverはチャンク単位の類似度検索なので、メインテーマと類似度が低い意見（「UIがわかりにくい」「回線が途切れた」等）が返されにくい
+- **取引先単位のフィルタリング**: company_nameはチャンキング対象フィールドに含まれないため、Retrieverで特定企業の回答だけを取得できない
+- **少数派の意見を確実に拾いたい場合**: Retrieverは関連度の高いチャンクを優先するため、少数意見が漏れるリスクがある
+
+### Data Cloud queryv2をApexから呼ぶ場合の注意
+
+- エンドポイント: `POST /services/data/v62.0/ssot/queryv2`
+- リクエストボディ: `{"sql":"SELECT ... FROM <DMO名>__dlm WHERE ..."}`
+- **HTTPステータスコードは200ではなく201（Created）**
+- Apexの制約: DML実行後はHTTP calloutが使えない。calloutを先に全て実行し、DMLをまとめて後から実行する設計が必要
