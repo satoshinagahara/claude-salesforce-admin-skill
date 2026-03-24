@@ -154,6 +154,31 @@ Employee Agent は CLI から作成できないため、**Salesforceセットア
 - アクション間の**データの受け渡し方法を明示**する
 - **対応する質問の例**を含める（Agent LLMのトピック選択精度向上）
 
+**⚠️ 同一セッション内でのAction再実行の強制（2026-03 実証済み・重要）:**
+
+Agent LLM（ReActプランナー）は、同一セッション内で過去にActionを実行済みの場合、2回目以降の質問に対してActionを再実行せず、**1回目の出力テキストから直接回答を生成する**ことがある。これは以下のケースで問題になる：
+
+- ユーザーの質問内容（userQuery）によって分析の焦点が変わるAction
+- 同一データに対して異なる角度からの分析を提供するAction
+
+**対策**: Instructionsに「毎回必ずActionを実行する」旨と「質問が異なれば結果が変わる」理由を明示する。
+
+```
+## NG（再実行されない場合がある）
+1. 「分析アクション」を実行する
+   - opportunityIdには現在表示中の商談のIDを渡す
+2. アクションの出力をユーザーに返す
+
+## OK（再実行が強制される — 実証済み）
+1. ユーザーが質問をするたびに、必ず「分析アクション」を実行する
+   - 過去の会話で既に結果を取得していても、質問が異なればアクションを再実行すること
+   - opportunityIdには現在表示中の商談のIDを渡す
+   - userQueryにはユーザーの質問内容をそのまま渡す（質問によって分析の焦点が変わるため）
+2. アクションの出力（分析レポート）をそのままユーザーに返す
+```
+
+**背景**: Agent LLMは効率化のために「既に十分な情報がある」と判断するとActionをスキップする。Instructionsで「質問によって結果が変わる」と明示することで、Agent LLMに再実行の必要性を理解させる。userQueryパラメータの存在が再実行の合理的な理由となる。
+
 **典型的なパターン: データ取得 → LLM生成:**
 
 ⚠️ **2アクション分離パターン（Apex → Prompt Template）はデータ量が少ない場合のみ有効。**
@@ -171,6 +196,132 @@ Employee Agent は CLI から作成できないため、**Salesforceセットア
 1. 「分析アクション」を実行する（Apex内でデータ取得+Prompt Template呼び出しを一括実行）
 2. アクションの出力（分析レポート）をそのままユーザーに返す
 ```
+
+### 0-9. 複数Agent共存とUI挙動（2026-03 調査）
+
+**1 orgでの複数Agent共存:**
+- 1 orgあたり**最大20 Agent**まで作成・有効化可能
+- 複数のEmployee Agent（InternalCopilot）を同時にアクティブにできる
+- UIにはAgentforceアイコン横に**ドロップダウン**が表示され、ユーザーが手動で切替
+- ドロップダウンに表示されるAgentは**パーミッションセット/プロファイル**で制御
+
+**Topic/Actionの上限:**
+
+| 項目 | 上限 |
+|---|---|
+| Agent数 / org | 20 |
+| Topic数 / Agent | 15 |
+| Action数 / Topic | 15 |
+
+**設計判断: 1 Agent集約 vs 複数Agent分散:**
+
+| 方式 | 適するケース |
+|---|---|
+| **1 Agent集約** | Topic 10-15件以下で、1人のユーザーが全機能を使う場合。管理がシンプル |
+| **複数Agent分散** | 部門別に異なるAgent（営業用 / 製造用等）を提供する場合。パーミッションで出し分け |
+| **Multi-Agent Orchestration** | プライマリAgentが意図を判断→専門Agentにルーティング。複雑なドメインが多い場合 |
+
+**Topicの設計品質がルーティング精度を左右する:**
+- Topic数が多いこと自体は問題ではない（15件上限まで実用的）
+- Agent LLMのルーティング精度は**Topic名・分類記述（Description）・スコープ（Scope）の明確さ**に依存
+- 曖昧なScope（「何でも対応します」）は他Topicとの判別を困難にする
+- 各Topicの`aiPluginUtterances`（対応する質問例）を充実させるとルーティング精度が向上
+
+### 0-10. レコードコンテキストの取得（2026-03 調査）
+
+**Agent Topicはレコードページのコンテキストを自動的に認識しない。**
+ただし以下の方法でレコードIDを取得可能：
+
+**方法1: Apex Actionの入力変数（推奨）**
+- `@InvocableVariable` に `recordId` を定義
+- レコードページから起動された場合、Salesforceが**自動的にIDを注入**
+- Agent LLMが「現在表示中のレコード」の文脈を理解し、適切にIDを渡す
+
+**方法2: Context Variable**
+- Agent設定でContext Variableを定義（Text, Id等のデータ型を指定）
+- Topic Instructions 内で「Context Variable のレコードIDを使用する」と明示
+- 各ActionのInput MappingでContext Variableの値をパラメータに割り当て
+
+**方法3: Record-Triggered Flow**
+- レコード更新時にFlowからAgentを非同期呼び出し
+- FlowのトリガーレコードIDがそのまま渡される
+
+### 0-11. Custom Lightning Types（CLT）によるチャット内LWCレンダリング（2026-03 調査・実装中）
+
+**概要**: Agentforceのチャット内にカスタムLWCコンポーネントをインラインでレンダリングできる仕組み。API v64.0+。
+
+**前提条件:**
+- Apex Actionの出力が構造化クラス（global, @AuraEnabled, @JsonAccess）であること
+- LWCが `lightning__AgentforceOutput` ターゲットを持つこと
+- Setup → Lightning 種別 で管理される
+
+**ファイル構成:**
+```
+lightningTypes/
+  MyTypeName/
+    schema.json                      ← データ構造定義（title, lightning:type必須）
+    lightningDesktopGenAi/
+      renderer.json                  ← LWCコンポーネントの指定
+```
+
+**schema.jsonの2つのフォーマット:**
+
+**パターンA: Apexクラス参照（推奨・公式サンプル準拠）:**
+```json
+{
+  "title": "My Type Name",
+  "description": "説明",
+  "lightning:type": "@apexClassType/c__MyApexClassName"
+}
+```
+- propertiesの手動定義不要 — Apexクラスのフィールドが自動的にスキーマになる
+- チャネルに「Agentforce (Lightning Experience)」が表示される
+- レンダラータブが出現する
+
+**パターンB: 手動プロパティ定義（非推奨）:**
+- 各プロパティに `title` と `lightning:type` が必須
+- `lightning:type` の値: `lightning__textType`, `lightning__numberType`, `lightning__booleanType`, `lightning__objectType`
+- チャネルが「エクスペリエンスビルダー」のみになり、レンダラータブが出ない
+- `$schema` キーワードは使用不可
+- 配列型に `lightning__collectionType` は使用不可
+
+**renderer.jsonの正しいフォーマット（実証済み）:**
+```json
+{
+  "renderer": {
+    "componentOverrides": {
+      "$": {
+        "definition": "c/myComponentName"
+      }
+    }
+  }
+}
+```
+
+> ⚠️ 以下のフォーマットは全て**失敗する**:
+> - `{"component": "c/myComponent"}` → additionalProperties error
+> - `{"lwc": {"name": "c/myComponent"}}` → additionalProperties error
+> - `{"definition": "c:myComponent"}` → Internal Server Error
+> - `{"namespace": "c", "name": "myComponent"}` → additionalProperties error
+> - `{}` → 空ファイルエラー
+
+**Apex出力クラスの要件:**
+```apex
+@JsonAccess(serializable='always' deserializable='always')
+global class MyResult {
+    @AuraEnabled
+    global String reportText;
+    // 全フィールドに @AuraEnabled が必要
+    // クラスは global（publicは不可）
+    // トップレベルクラスのみ（内部クラス不可）
+}
+```
+
+**現状の課題（2026-03時点）:**
+- schema.json + renderer.json のデプロイは成功する
+- Agent LLMは `show` 関数で構造化データを返す
+- しかしLWCがチャット内でレンダリングされない（JSONが生テキスト表示）
+- renderer → LWCの紐付けが効いていない可能性。調査継続中
 
 ---
 
