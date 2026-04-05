@@ -360,6 +360,8 @@ Bot + BotVersion              ← GenAiPlannerBundleが先に必要
 
 ## 2. SF CLI 専用コマンド（sf agent）
 
+> **推奨**: ExternalCopilot（Service Agent）の構築には **Agent Script（Authoring Bundle）方式** を使う（セクション17参照）。以下の `sf agent create` は旧方式だが引き続き使用可能。
+
 ### 2-1. Agent仕様ファイルの生成
 
 ```bash
@@ -1315,12 +1317,420 @@ sf data query \
 
 ---
 
-## 17. その他のベストプラクティス
+## 17. Agent Script（.agent ファイル）によるエージェント構築
 
-- **Agent作成は `sf agent create` を使う**（手動のMetadata API Botデプロイは制限多い）
-- **Employee Agent（InternalCopilot）はUIから作成する**（CLIでは不可）
+### 17-0. 概要と推奨方針
+
+Agent Script は Agentforce エージェントを宣言的に定義する DSL。`.agent` 拡張子のファイルを直接編集し、`sf agent publish authoring-bundle` でデプロイする。
+
+**Agent Script を第一選択として使う。** 従来の GenAiPlugin/GenAiFunction XML メタデータ手動構築よりも、Agent Script の方が：
+- 1ファイルでエージェント全体を見通せる
+- トピック・アクション・変数・推論ロジックを一元管理できる
+- `validate` → `publish` のワークフローで安全にデプロイできる
+- 自然言語プロンプト（`|`）と決定論的ロジック（`->`）を混在できる
+
+**制限**: CLI/Agent Script から作成されるのは常に **ExternalCopilot（Service Agent）**。Employee Agent（InternalCopilot）は引き続きUIで作成し、retrieveでローカル管理する。
+
+> 完全な構文リファレンスは `docs/concepts/agent-script-syntax-reference.md` を参照。
+
+### 17-1. ワークフロー
+
+```
+# 新規作成
+sf agent generate agent-spec → specs/agentSpec.yaml を編集
+sf agent generate authoring-bundle → .agent ファイル生成
+.agent ファイルを編集（トピック・アクション・指示を追加）
+sf agent validate authoring-bundle → コンパイル検証
+sf agent publish authoring-bundle → org にパブリッシュ
+
+# 既存エージェントの更新
+.agent ファイルを直接編集
+sf agent validate authoring-bundle → 検証
+sf agent publish authoring-bundle → パブリッシュ
+```
+
+**依存リソース（Apex/Flow）を変更した場合は、`publish` の前に `sf project deploy start` で先にデプロイする。**
+
+### 17-2. ファイル構造
+
+```
+force-app/main/default/aiAuthoringBundles/<BundleName>/
+├── <BundleName>.bundle-meta.xml    # bundleType: AGENT
+└── <BundleName>.agent              # Agent Script 本体
+```
+
+`bundle-meta.xml`:
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<AiAuthoringBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+  <bundleType>AGENT</bundleType>
+</AiAuthoringBundle>
+```
+
+### 17-3. .agent ファイルの基本構造
+
+```
+config:                         # エージェント設定（必須）
+variables:                      # 変数定義
+system:                         # システム指示・メッセージ
+language:                       # ロケール
+connections:                    # Omni-Channel接続（@utils.escalate 用）
+start_agent topic_selector:     # エントリポイント（必須）
+topic <name>:                   # トピック定義（複数可）
+```
+
+インデント: **スペースのみ**（タブ不可）、3スペース推奨。
+
+### 17-4. config ブロック
+
+```yaml
+config:
+    developer_name: "MyAgent"
+    agent_label: "エージェント表示名"
+    agent_type: "AgentforceEmployeeAgent"   # または未指定（Service Agent）
+    description: "エージェントの説明"
+    default_agent_user: "NEW AGENT USER"    # Service Agent向け
+```
+
+### 17-5. variables ブロック
+
+```yaml
+variables:
+    # mutable: 読み書き可能（アクション結果の保持等）
+    account_id: mutable string = ""
+        description: "対象取引先ID"
+    result_data: mutable object = {}
+        description: "取得結果"
+    is_verified: mutable boolean = False
+        description: "認証済みフラグ"
+
+    # linked: 読み取り専用（セッション情報等の外部ソース紐付け）
+    EndUserId: linked string
+        source: @MessagingSession.MessagingEndUserId
+        description: "MessagingEndUser Id"
+```
+
+**型一覧**: `string`, `number`, `integer`, `long`, `boolean`, `object`, `id`, `date`, `datetime`, `time`, `currency`, `list[<type>]`
+
+**参照方法**:
+- ロジック内: `@variables.name`
+- プロンプト内: `{!@variables.name}`
+- 代入（`->` 内）: `set @variables.name = "value"`
+
+### 17-6. アクション定義（重要）
+
+トピック内の `actions:` ブロックで定義。`target:` でApex/Flow/Prompt Templateを指定。
+
+```yaml
+topic order_management:
+    description: "注文管理"
+
+    actions:
+        get_order_status:
+            description: "注文ステータスを取得"
+            inputs:
+                order_id: string
+                    description: "注文ID"
+                    is_required: True
+            outputs:
+                status: string
+                    description: "注文ステータス"
+                items: list[object]
+                    description: "商品リスト"
+                    complex_data_type_name: "lightning__recordInfoType"
+            target: "flow://GetOrderStatus"
+
+        analyze_data:
+            description: "データ分析レポートを生成"
+            inputs:
+                data_json: string
+                    description: "分析対象データ（JSON）"
+            outputs:
+                report: string
+                    description: "分析レポート"
+            target: "apex://DataAnalysisService"
+
+        generate_summary:
+            description: "サマリーを生成"
+            inputs:
+                "Input:email": string
+                    description: "メールアドレス"
+                    is_required: True
+            outputs:
+                promptResponse: string
+                    description: "生成結果"
+                    is_used_by_planner: True
+            target: "generatePromptResponse://GenerateSummaryTemplate"
+```
+
+**ターゲットタイプ**:
+
+| タイプ | 構文 | 対象 |
+|--------|------|------|
+| Flow | `"flow://FlowApiName"` | Autolaunched Flow |
+| Apex | `"apex://ClassName"` | `@InvocableMethod` を持つApexクラス |
+| Prompt Template | `"generatePromptResponse://TemplateName"` | Prompt Builder テンプレート |
+
+**アクションオプション**:
+- `require_user_confirmation: True` — 実行前にユーザー確認
+- `include_in_progress_indicator: True` — 処理中インジケーター表示
+- `progress_indicator_message: "検索中..."` — インジケーターメッセージ
+
+### 17-7. reasoning ブロック（推論ロジック）
+
+#### プロンプトモード（`|`）— LLMに渡す自然言語
+```yaml
+reasoning:
+    instructions: |
+        ユーザーの注文に関する質問に回答してください。
+```
+
+#### ロジックモード（`->`）— 決定論的処理
+```yaml
+reasoning:
+    instructions: ->
+        if @variables.account_id == "":
+            | 取引先IDを教えてください。
+        else:
+            run @actions.get_data
+                with account_id = @variables.account_id
+                set @variables.result_data = @outputs.result
+
+            | データを取得しました: {!@variables.result_data}
+```
+
+#### reasoning.actions（LLMが状況に応じて選択するツール）
+```yaml
+reasoning:
+    instructions: |
+        ユーザーの要望に応じてツールを使ってください。
+    actions:
+        # LLMがスロットフィル（... = 会話から値を抽出）
+        search: @actions.search_records
+            with keyword = ...
+            set @variables.result = @outputs.records
+
+        # 固定値バインド
+        get_japanese: @actions.get_records
+            with language = "ja"
+
+        # 変数バインド
+        analyze: @actions.analyze_data
+            available when @variables.result != ""
+            with data = @variables.result
+            set @variables.analysis = @outputs.report
+
+        # アクションチェーン（コールバック）
+        create_and_notify: @actions.create_record
+            with name = ...
+            set @variables.record_id = @outputs.id
+            run @actions.send_notification
+                with record_id = @variables.record_id
+
+        # トピック遷移
+        go_to_support: @utils.transition to @topic.support
+            description: "サポートトピックへ遷移"
+            available when @variables.needs_support == True
+
+        # 変数収集
+        collect_info: @utils.setVariables
+            description: "ユーザー情報を収集"
+            with user_name = ...
+            with email = ...
+
+        # エスカレーション
+        escalate_to_human: @utils.escalate
+            description: "人間のエージェントに転送"
+```
+
+**入力バインディングパターン**:
+
+| パターン | 構文 | 説明 |
+|----------|------|------|
+| LLMスロットフィル | `with param = ...` | LLMが会話から値を抽出 |
+| 固定値 | `with param = "value"` | 常に固定値 |
+| 変数バインド | `with param = @variables.name` | 変数の現在値を渡す |
+
+### 17-8. `available when` ガード
+
+reasoning.actions 内のアクションに条件を付けて、LLMからの可視性を制御:
+
+```yaml
+actions:
+    execute_transfer: @actions.execute_transfer
+        available when @variables.validation_passed and @variables.amount > 0
+
+    view_details: @utils.transition to @topic.details
+        available when @variables.record_id != ""
+```
+
+条件が満たされない場合、そのアクションはLLMのツール一覧に表示されない。
+
+### 17-9. before_reasoning / after_reasoning
+
+推論の前後に毎リクエスト実行される決定論的処理ブロック。`|`（パイプ）は使用不可。
+
+```yaml
+topic main:
+    description: "メイントピック"
+
+    before_reasoning:
+        run @actions.check_session
+            set @variables.session_valid = @outputs.is_valid
+
+    reasoning:
+        instructions: ...
+
+    after_reasoning:
+        set @variables.turn_count = @variables.turn_count + 1
+        if @variables.should_redirect:
+            transition to @topic.next_step
+```
+
+### 17-10. @utils ビルトイン一覧
+
+| ユーティリティ | 用途 | 使用箇所 |
+|---|---|---|
+| `@utils.transition to @topic.<name>` | トピック遷移（一方向） | reasoning.actions / `->` 内の `transition to` |
+| `@utils.setVariables` | LLMに会話から変数値を抽出させる | reasoning.actions |
+| `@utils.escalate` | 人間エージェントへのエスカレーション | reasoning.actions（`connections` 必須） |
+
+### 17-11. CLIコマンド一覧
+
+```bash
+# バンドル生成（agentSpecから）
+sf agent generate authoring-bundle \
+  --spec specs/agentSpec.yaml \
+  --name "表示名" \
+  --api-name ApiName \
+  --target-org <username>
+
+# バンドル生成（specなし — 空テンプレート）
+sf agent generate authoring-bundle \
+  --no-spec \
+  --name "表示名" \
+  --api-name ApiName \
+  --target-org <username>
+
+# コンパイル検証
+sf agent validate authoring-bundle \
+  --api-name ApiName \
+  --target-org <username>
+
+# パブリッシュ（Bot + BotVersion + GenAiXX 自動生成）
+sf agent publish authoring-bundle \
+  --api-name ApiName \
+  --target-org <username>
+
+# 対話プレビュー
+sf agent preview \
+  --api-name ApiName \
+  --target-org <username>
+
+# 有効化・無効化
+sf agent activate --api-name ApiName --target-org <username>
+sf agent deactivate --api-name ApiName --target-org <username>
+
+# ブラウザで確認
+sf org open agent --api-name ApiName --target-org <username>
+```
+
+### 17-12. 実装パターン例
+
+#### パターン1: データ取得 → 分析（Apex + Prompt Template）
+
+```
+config:
+    developer_name: "AccountAnalyst"
+    agent_label: "取引先分析エージェント"
+    description: "取引先データを収集し分析レポートを生成"
+
+variables:
+    account_id: mutable id = ""
+        description: "対象取引先ID"
+    raw_data: mutable string = ""
+        description: "取得した生データ（JSON）"
+
+system:
+    instructions: "あなたは取引先データの分析を支援するエージェントです。日本語で応答してください。"
+    messages:
+        welcome: "取引先分析エージェントです。どの取引先を分析しますか？"
+        error: "エラーが発生しました。再度お試しください。"
+
+language:
+    default_locale: "ja"
+
+start_agent topic_selector:
+    description: "ユーザーリクエストを適切なトピックにルーティング"
+
+    reasoning:
+        instructions: |
+            ユーザーのメッセージに最も合うトピックを選択してください。
+        actions:
+            go_to_analysis: @utils.transition to @topic.account_analysis
+                description: "取引先の分析・サマリー生成"
+
+topic account_analysis:
+    description: "取引先データの収集と分析レポート生成"
+
+    actions:
+        get_account_data:
+            description: "取引先の商談・ケース・コンタクト情報を一括取得"
+            inputs:
+                accountId: id
+                    description: "取引先ID"
+                    is_required: True
+            outputs:
+                analysisData: string
+                    description: "取得データ（JSON）"
+            target: "apex://AccountDataCollector"
+
+        generate_report:
+            description: "取得データからAI分析レポートを生成"
+            inputs:
+                "Input:analysisData": string
+                    description: "分析対象データ（JSON）"
+                    is_required: True
+            outputs:
+                promptResponse: string
+                    description: "生成されたレポート"
+                    is_used_by_planner: True
+                    is_displayable: True
+            target: "generatePromptResponse://AccountAnalysisReport"
+
+    reasoning:
+        instructions: ->
+            if @variables.account_id == "":
+                | 分析対象の取引先名またはIDを教えてください。
+            else:
+                run @actions.get_account_data
+                    with accountId = @variables.account_id
+                    set @variables.raw_data = @outputs.analysisData
+
+                | データを取得しました。レポートを生成します。
+
+                run @actions.generate_report
+                    with "Input:analysisData" = @variables.raw_data
+
+                | {!@outputs.promptResponse}
+
+        actions:
+            set_account: @utils.setVariables
+                description: "取引先IDを設定"
+                with account_id = ...
+```
+
+---
+
+## 18. その他のベストプラクティス
+
+- **ExternalCopilot（Service Agent）は Agent Script（Authoring Bundle）方式で構築する**（推奨。GenAiPlugin/GenAiFunction XML の手動構築は代替手段）
+- **Employee Agent（InternalCopilot）はUIから作成し、retrieveでローカル管理する**（CLIでは作成不可）
+- **Agent Script の `.agent` ファイルを直接編集してOK**（UIのAgent Builderと等価）
+- **依存リソース（Apex/Flow）変更時は `sf project deploy start` を先に実行**してから `sf agent publish authoring-bundle`
+- **`sf agent validate authoring-bundle` でコンパイル検証してから publish**
 - **GenAiFunctionの invocationTarget はApexクラス名を指定**（IDではない）
 - **agentSpec.yaml のトピック名は英語で記述**（日本語だとLLM生成が失敗することがある）
-- **BotVersionは手動デプロイしない**（`sf agent create`の内部APIを使う）
+- **BotVersionは手動デプロイしない**（`sf agent create` または `sf agent publish` の内部APIを使う）
 - **InternalCopilotのトピック/アクション追加はUIで行い、retrieveでローカル保存**
-- Apex @InvocableMethod を追加したら Agent Builder の「呼び出し可能なメソッド」タブから手動登録が必要
+- Apex @InvocableMethod を追加したら Agent Builder の「呼び出し可能なメソッド」タブから手動登録が必要（Agent Script方式では `target: "apex://ClassName"` で直接指定可能）
