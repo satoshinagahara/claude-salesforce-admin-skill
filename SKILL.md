@@ -59,6 +59,7 @@ sf org login jwt \
 | 権限セット・プロファイル | [metadata-security.md](references/metadata-security.md) | 権限セット、プロファイル、アクセス権、ユーザー権限 |
 | Apex・フロー・自動化 | [metadata-automation.md](references/metadata-automation.md) | Apex、フロー、トリガー、ワークフロー、プロセスビルダー |
 | Lightning Web Component | [metadata-lwc.md](references/metadata-lwc.md) | LWC、Lightning Web Component、コンポーネント作成、lwc、UI部品 |
+| Experience Cloud / ExperienceBundle | [metadata-experience-cloud.md](references/metadata-experience-cloud.md) | Experience Cloud、ExperienceBundle、Community、デジタルサイト、パートナーポータル、顧客コミュニティ、NavigationMenu、サイト公開、community publish、ブランディング、ルーティング |
 | Agentforce / GenAI Agent | [metadata-agentforce.md](references/metadata-agentforce.md) | Agentforce、Agent、エージェント、GenAiPlugin、GenAiFunction、GenAiPlanner、Bot、BotVersion、AIエージェント、agentSpec |
 | Data360 データストリーム・取り込み | [data-streams.md](references/data-streams.md) | データストリーム、Ingestion、取り込み、コネクタ、データソース、Data Cloud、Data360、CDP |
 | Data360 データモデル・マッピング・統合 | [data-model.md](references/data-model.md) | データモデル、DMO、DLO、Data Lake Object、マッピング、統合ルール、Identity Resolution、名寄せ |
