@@ -101,8 +101,23 @@ Name,Phone,BillingCity,BillingState
 **ルール**:
 - 1行目はAPIフィールド名（日本語不可）
 - 文字コードはUTF-8
+- **改行コードは CRLF 必須**（Bulk API v2 の仕様）。LF だけだと取り込み時にエラー or 1 行目以外が解釈されない
 - 日付フォーマット: `YYYY-MM-DD`
 - Booleanは `true` / `false`
+
+**Python で CSV を生成する場合の注意（実証済み）**:
+Python の `csv.writer` はデフォルトで `os.linesep`（macOS/Linux は LF）を使うため、そのまま Bulk Insert に渡すと失敗する。**`lineterminator="\r\n"` を明示**し、`open()` の `newline=""` も併用する：
+
+```python
+import csv
+
+with open("data.csv", "w", encoding="utf-8", newline="") as f:
+    writer = csv.writer(f, lineterminator="\r\n")
+    writer.writerow(["Name", "Phone"])
+    writer.writerow(["株式会社A", "03-1111-1111"])
+```
+
+`newline=""` がないと OS 依存の改行変換が発生し、CRLF が CRCRLF に化けるなどの事故が起きる。
 
 ---
 
@@ -122,6 +137,20 @@ sf data import bulk \
 ```
 
 ---
+
+### 2-2a. 選択リスト（Picklist）への書込時の注意（実証済み）
+
+**Picklist 値は API value（英語の内部値）で書く。Label（日本語表示名）や creative value（リストに無い任意値）は不可。**
+
+| 書き方 | 結果 |
+|---|---|
+| API value (英語) を渡す | ✓ 成功 |
+| Label (日本語表示名) を渡す | ✗ `制限つき選択リスト項目の値が不適切` エラー |
+| Creative value (リストにない任意値) を渡す | ✗ 同上。`restrictedPicklist=false` でも UI に不整合な値として残り、運用上のノイズになる |
+
+**対処**:
+- データ作成前に必ず API value を確認（`metadata-objects.md` の Picklist 節 / `sf sobject describe` で取得）
+- 多言語 org では Label と API value が完全に別物（Label は日本語、API value は英語）。Translation Workbench が有効化されていても、書込時は API value を使う
 
 ### 2-3. バルクUpsert（Insert/Update混在）
 
