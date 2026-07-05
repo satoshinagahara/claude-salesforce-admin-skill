@@ -1,6 +1,6 @@
 ---
 name: salesforce-admin
-description: "Claude Code専用のSalesforce管理スキル。データの登録・更新（単件/バルク）、カスタムオブジェクト・フィールド・レイアウト・権限セット・Apex・フロー・Agentforce・Data360（Data Cloud）などの操作をCLIで実行。本番環境対応。"
+description: "Salesforce組織をsf CLI（JWT認証）で操作するスキル。レコードのCRUD（単件/バルク/CSV）、カスタムオブジェクト・項目・レイアウト・権限セット・Apex・フロー・LWC・Experience Cloud・Agentforce・Prompt Template・Data360（Data Cloud）・DocuSign電子署名の設定とデプロイに対応。Salesforceのデータ操作・メタデータ変更・デプロイ・エージェント設定・Data Cloud設定が必要なとき、またはユーザーがSalesforce/sf CLI/Apex/フロー/Agentforce/SOQLに言及したときに使用する。本番org対応（安全確認手順込み）。"
 argument-hint: "[操作内容]"
 ---
 

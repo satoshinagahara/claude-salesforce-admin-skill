@@ -1,5 +1,28 @@
 # Metadata: Agentforce (GenAI Agent) Reference
 
+## 目次
+
+- 概要
+- 0. Agentforce エージェント種別（重要）
+- 1. メタデータ型と依存関係
+- 2. SF CLI 専用コマンド（sf agent）
+- 3. 既存Agentのメタデータ取得（Retrieve）
+- 4. ディレクトリ構造
+- 5. Bot メタデータ構造
+- 6. GenAiFunction（アクション）の作成
+- 7. GenAiPlugin（トピック）の構造
+- 8. GenAiPlannerBundle の構造
+- 9. Prompt Template をエージェントアクションとして使う
+- 10. Context Variables と Agent Quick Action
+- 11. Employee Agent のアクセス権設定
+- 12. デプロイ（Deploy）
+- 13. 削除の制限
+- 14. よくあるエラーと対処
+- 15. Agent設定の前提条件（org設定）
+- 16. アセットライブラリと再利用可能アセットの活用
+- 17. Agent Script（.agent ファイル）によるエージェント構築
+- 18. その他のベストプラクティス
+
 ## 概要
 Agentforce AgentのSF CLIによる作成・設定・デプロイパターン。
 APIバージョン60以上が必要。GenAiPlannerBundleはv64以上、AiAuthoringBundleはv65以上。

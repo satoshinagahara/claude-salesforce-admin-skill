@@ -1,5 +1,13 @@
 # Metadata: Permission Sets & Profiles Reference
 
+## 目次
+
+- 概要
+- 1. 権限セット（Permission Set）
+- 2. プロファイル（Profile）
+- 3. Validate → Deploy
+- 4. よくあるエラーと対処
+
 ## 概要
 権限セット・プロファイルのRetrieve・変更・Deployパターン。
 

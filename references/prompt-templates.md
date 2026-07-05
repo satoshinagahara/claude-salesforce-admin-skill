@@ -1,5 +1,20 @@
 # Prompt Template (Prompt Builder) Reference
 
+## 目次
+
+- 概要
+- 1. テンプレートタイプと呼び出し元
+- 2. Prompt Template の作成（UI）
+- 3. Flow からの呼び出し
+- 4. Apex からの呼び出し
+- 5. REST API からの呼び出し
+- 6. Agentforce アクションとしての利用
+- 7. メタデータ構造
+- 8. ユースケース一覧
+- 9. 標準プロンプトテンプレートとExample Library
+- 10. プロンプト設計のベストプラクティス
+- 11. よくあるエラーと対処
+
 ## 概要
 Prompt Templateは、Salesforceの生成AI機能をワークフローに統合するための構造化されたプロンプト定義。
 Prompt Builder（Einstein 1 Studio）で作成・管理し、**Flow・Apex・REST API・Agentforceアクション**など複数のコンテキストから呼び出せる。

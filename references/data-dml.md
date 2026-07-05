@@ -1,5 +1,13 @@
 # Data DML Operations Reference
 
+## 目次
+
+- 概要
+- 1. 単件操作
+- 2. バルク操作（CSV）
+- 3. SOQL実行（確認・検索用）
+- 4. よくあるエラーと対処
+
 ## 概要
 Salesforce CLIを使ったレコードのCRUD操作パターン。
 

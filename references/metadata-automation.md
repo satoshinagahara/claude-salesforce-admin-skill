@@ -1,5 +1,15 @@
 # Metadata: Apex, Flow & Automation Reference
 
+## 目次
+
+- 概要
+- 1. Apex クラス
+- 2. Apex トリガー
+- 3. フロー（Flow）
+- 4. ワークフロー（Workflow / Process Builder）
+- 5. Validate → Deploy（共通）
+- 6. よくあるエラーと対処
+
 ## 概要
 Apexクラス・トリガー、フロー、ワークフロー・プロセスビルダーのRetrieve・変更・Deployパターン。
 

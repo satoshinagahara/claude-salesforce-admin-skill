@@ -1,5 +1,18 @@
 # Data Streams & Ingestion Reference
 
+## 目次
+
+- 概要
+- 1. データストリームの種類
+- 2. CRM Connector データストリームの確認・設定
+- 3. Ingestion API によるデータ取り込み
+- 4. データストリームの状態管理
+- 5. メタデータによるデータストリーム管理
+- 6. Amazon S3 Cloud Storage Connector
+- 7. DLOカテゴリの重要性（設計上の最重要判断）
+- 8. データストリーム再作成時のAPI名変更
+- 9. よくあるエラーと対処
+
 ## 概要
 Data360（Data Cloud）へのデータ取り込み方法。データストリームはData Cloudにデータを流し込むパイプライン。
 

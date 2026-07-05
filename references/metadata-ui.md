@@ -1,5 +1,17 @@
 # Metadata: Page Layouts, Record Types & FlexiPages Reference
 
+## 目次
+
+- 概要
+- ★大原則: UI編集系メタデータは編集前に必ず retrieve（実証済み）
+- 1. ページレイアウト
+- 1b. パス（PathAssistant）
+- 2. レコードタイプ
+- 3. ページレイアウトの変更例
+- 4. Validate → Deploy
+- 5. よくあるエラーと対処
+- 6. Lightning レコードページ（FlexiPage）
+
 ## 概要
 ページレイアウト、レコードタイプ、Lightning レコードページ（FlexiPage）のRetrieve・変更・Deployパターン。
 
