@@ -3,6 +3,14 @@
 ## 概要
 ページレイアウト、レコードタイプ、Lightning レコードページ（FlexiPage）のRetrieve・変更・Deployパターン。
 
+## ★大原則: UI編集系メタデータは編集前に必ず retrieve（実証済み）
+
+FlexiPage / Layout / CustomApplication / Tab / FlowDefinition など **App Builder や Setup UI から頻繁に編集されるメタデータは「org が source-of-truth」になりがち**。ローカルファイルが古いまま編集・デプロイすると、**その間に org 側で行われた UI 編集が巻き戻る**（例: ローカルの FlexiPage が1ヶ月前のままで LWC 参照名だけ差し替えてデプロイ → ユーザーが App Builder で行った Home 編集が全て消失）。
+
+- これらの型は、**どんなに単純な変更でも先に `sf project retrieve start --metadata FlexiPage:<name>` 等で最新を取得**してから編集・デプロイする
+- LWC / Apex / カスタムオブジェクトなどコード・スキーマ系は通常 retrieve 不要（ローカルソースが正）
+- retrieve 後に git diff で想定外の差分が出たら「org の方が新しい」可能性が高い。ユーザーに確認してからデプロイする
+
 ---
 
 ## 1. ページレイアウト
