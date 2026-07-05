@@ -78,6 +78,73 @@ sf org list metadata \
 - `TwoColumnsLeftToRight`: 2列（左→右）
 - `OneColumn`: 1列
 
+### 1-4. ★カスタムボタンを Lightning / Experience Cloud に出す（platformActionList）
+
+カスタムボタン(WebLink, DisplayType=B)や標準ボタンは、レイアウトの `<customButtons>` に入れても **Lightning Experience / Experience Cloud のレコードページには出ない**。Lightning で表示するには、レイアウトの **`<platformActionList>`（旧「Salesforce モバイルおよび Lightning Experience のアクション」）** に明示的に並べる必要がある。AppExchange パッケージ（例: DocuSign DAL）が `<customButtons>` だけにボタンを追加した場合、ここに足さないと押せない。
+
+```xml
+<Layout ...>
+    <customButtons>WebLinkName</customButtons>   <!-- 旧来のボタン領域（これだけではLEXに出ない） -->
+    <layoutSections>...</layoutSections>
+    <!-- ↓ layoutSections の後・relatedLists の前に置く -->
+    <platformActionList>
+        <actionListContext>Record</actionListContext>
+        <platformActionListItems>
+            <actionName>WebLinkName</actionName>      <!-- WebLink(カスタムボタン)のAPI名 -->
+            <actionType>CustomButton</actionType>
+            <sortOrder>0</sortOrder>
+        </platformActionListItems>
+        <platformActionListItems>
+            <actionName>Edit</actionName>
+            <actionType>StandardButton</actionType>
+            <sortOrder>1</sortOrder>
+        </platformActionListItems>
+    </platformActionList>
+    <relatedLists>...</relatedLists>
+</Layout>
+```
+
+- `actionType`: `CustomButton`（WebLink）/ `StandardButton`（Edit/Delete/Clone等）/ `QuickAction`
+- WebLink名は Tooling で確認: `sf data query --use-tooling-api -o <org> -q "SELECT Name,MasterLabel,Url FROM WebLink WHERE EntityDefinition.QualifiedApiName='<Obj>'"`
+- 要素順は XSD 準拠（`customButtons` → `layoutSections` → `platformActionList` → `relatedLists`）。順序違反でデプロイエラー。
+
+### 1-5. カスタムオブジェクトはタブが無いと内部で開けない
+
+新規カスタムオブジェクトは CustomTab を作らないと App Launcher / ナビに出ず、内部ユーザーがレコードを開けない（直URL `.../lightning/r/<Obj>/<id>/view` では開ける）。
+
+```xml
+<!-- force-app/main/default/tabs/<Obj>.tab-meta.xml -->
+<CustomTab xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customObject>true</customObject>
+    <motif>Custom20: Contract</motif>
+</CustomTab>
+```
+
+---
+
+## 1b. パス（PathAssistant）
+
+選択リスト項目（ステータス等）の進捗パスをレコードページに表示する。`force-app/main/default/pathAssistants/<Name>.pathAssistant-meta.xml`。配置（パスコンポーネントをページに追加）は App Builder / Experience Builder 側の作業。
+
+```xml
+<PathAssistant xmlns="http://soap.sforce.com/2006/04/metadata">
+    <active>true</active>
+    <entityName>MyObject__c</entityName>
+    <fieldName>Status__c</fieldName>
+    <masterLabel>ステータスパス</masterLabel>
+    <pathAssistantSteps>
+        <fieldNames>KeyField__c</fieldNames>   <!-- 任意: ステップで編集できるキー項目 -->
+        <info>このステップの案内文</info>      <!-- 任意 -->
+        <picklistValueName>値1</picklistValueName>
+    </pathAssistantSteps>
+    <!-- 選択リスト値ごとに pathAssistantSteps を並べる（順序＝表示順） -->
+    <recordTypeName>__MASTER__</recordTypeName>  <!-- レコードタイプ無しは __MASTER__ -->
+</PathAssistant>
+```
+
+- 要素順: `active` → `entityName` → `fieldName` → `masterLabel` → `pathAssistantSteps`(複数) → `recordTypeName`
+- 候補に出ない場合は Setup「パスの設定」で Path 機能が有効か確認。
+
 ---
 
 ## 2. レコードタイプ

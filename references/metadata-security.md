@@ -233,3 +233,6 @@ sf project deploy start \
 | `Cannot modify System Administrator` | システム管理者プロファイルは保護 | 代替プロファイルか権限セットで対応 |
 | `Field not accessible` | フィールドへのアクセス権なし | フィールドレベルセキュリティを先に設定 |
 | `必須項目 XXX__c.YYY__c にはリリースできません` | Master-Detail関係項目（MD項目）をfieldPermissionsに含めている | MD関係項目はFLS設定が不要（常に親に依存）。`fieldPermissions`からMD項目を除外する |
+| `No such column 'XXX__c'`（Apexクラスはコンパイル成功するのに匿名Apex/`sf data`/`sobject describe` で出る） | デプロイした新規項目に**実行ユーザーのFLSが無い**。describe/SOQLはFLS不可の項目を「存在しない」扱いにする（Apexコンパイラは全項目見えるので気づきにくい） | 実行ユーザーのプロファイル/権限セットに当該項目の `fieldPermissions`(readable) を付与してデプロイ。`SELECT QualifiedApiName FROM FieldDefinition WHERE EntityDefinition.QualifiedApiName='<Obj>'`(tooling) では見えるが describe では見えない、が典型症状 |
+
+**要素順の注意**: `PermissionSet`/`Profile` のXMLは要素がアルファベット/スキーマ順。`fieldPermissions` は全て `objectPermissions` より前にまとめる（混在させると `Element fieldPermissions is duplicated` エラー）。

@@ -69,6 +69,7 @@ Hosted MCP が発行する `access_token` は **`mcp_api` scope のみ**で、MC
 | Data360 データモデル・マッピング・統合 | [data-model.md](references/data-model.md) | データモデル、DMO、DLO、Data Lake Object、マッピング、統合ルール、Identity Resolution、名寄せ |
 | Prompt Template / Prompt Builder | [prompt-templates.md](references/prompt-templates.md) | プロンプトテンプレート、Prompt Template、Prompt Builder、LLM生成、Field Generation、Flex Template、Sales Email、Einstein生成AI |
 | Agentforce × Data Cloud連携・RAG | [agentforce-integration.md](references/agentforce-integration.md) | グラウンディング、Data Graph、Semantic Search、ベクトル検索、RAG、Retriever、Search Index、Data Library、チャンキング、ナレッジ検索 |
+| DocuSign 電子署名連携（dfsle / Apps Launcher） | [docusign-dal-esignature.md](references/docusign-dal-esignature.md) | DocuSign、電子署名、署名、eSignature、Apps Launcher、dfsle、エンベロープ、Envelope、署名依頼、書き戻し、PowerForm |
 
 複数タイプにまたがる場合は複数ファイルを読み込む。
 
